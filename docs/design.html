@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recado Design</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a design memo in Notted's visual language. Prose column at about 68ch, with app mockups wider than the column. */
+:root {
+  --bg: #fbfbf8;
+  --side: #f1f2ee;
+  --card: #ffffff;
+  --fg: #1d2330;
+  --fg2: #4b5263;
+  --fg3: #686e7e;
+  --border: #dfe1da;
+  --sel: #e3e7f5;
+  --accent: #24408e;
+  --on-accent: #ffffff;
+  --ok: #2f7a4b;
+  --ok-bg: #e2f1e7;
+  --warn: #9a6200;
+  --warn-bg: #f8ecd4;
+  --bad: #b4322a;
+  --bad-bg: #f6e3e1;
+  --font-sans: "IBM Plex Sans", -apple-system, "Helvetica Neue", sans-serif;
+  --font-display: "Newsreader", Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(29,35,48,.06), 0 14px 30px -14px rgba(29,35,48,.22);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1b1a18; --side: #151412; --card: #232220; --fg: #ece8df; --fg2: #bab6ab; --fg3: #9c9da6;
+    --border: #35332f; --sel: #2b3142; --accent: #8fa3e8; --on-accent: #12162a;
+    --ok: #7fcf9b; --ok-bg: #1f3327; --warn: #e6b65c; --warn-bg: #3a2e17; --bad: #f0877d; --bad-bg: #3b2220;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 30px -14px rgba(0,0,0,.7);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1b1a18; --side: #151412; --card: #232220; --fg: #ece8df; --fg2: #bab6ab; --fg3: #9c9da6;
+  --border: #35332f; --sel: #2b3142; --accent: #8fa3e8; --on-accent: #12162a;
+  --ok: #7fcf9b; --ok-bg: #1f3327; --warn: #e6b65c; --warn-bg: #3a2e17; --bad: #f0877d; --bad-bg: #3b2220;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 14px 30px -14px rgba(0,0,0,.7);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15.5px/1.6 var(--font-sans); }
+main { max-width: 1040px; margin: 0 auto; padding: 48px 20px 96px; display: grid; gap: 56px; }
+.prose { max-width: 68ch; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 500; text-wrap: balance; margin: 0; line-height: 1.2; }
+h1 { font-size: 44px; letter-spacing: -.01em; }
+h2 { font-size: 28px; margin-bottom: 12px; }
+h3 { font-size: 19px; margin: 20px 0 6px; }
+p { margin: 0 0 12px; }
+.lede { font-size: 18px; color: var(--fg2); margin-top: 14px; }
+.meta { color: var(--fg3); font-size: 13.5px; margin-top: 10px; }
+code, .mono { font-family: var(--font-mono); font-size: .88em; }
+code { background: var(--side); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+pre { background: var(--side); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; overflow-x: auto; font: 13px/1.55 var(--font-mono); margin: 8px 0 16px; }
+ul, ol { margin: 0 0 12px; padding-left: 22px; }
+li { margin: 3px 0; }
+section > .num { font: 500 12px var(--font-mono); color: var(--accent); letter-spacing: .06em; margin-bottom: 6px; display: block; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-weight: 600; color: var(--fg2); font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em; }
+.tablewrap { overflow-x: auto; }
+.callout { border-left: 3px solid var(--accent); background: var(--card); padding: 12px 16px; border-radius: 0 var(--radius) var(--radius) 0; box-shadow: var(--shadow); margin: 14px 0; }
+.callout.warn { border-left-color: var(--warn); }
+
+/* ---------- app mockups ---------- */
+.shots { display: grid; gap: 28px; }
+.cap { color: var(--fg3); font-size: 13.5px; margin-top: 8px; }
+.win { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; display: grid; grid-template-columns: 210px 1fr; min-height: 430px; }
+.side { background: var(--side); border-right: 1px solid var(--border); padding: 14px 10px; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; }
+.lights { display: flex; gap: 6px; padding: 0 6px 14px; }
+.lights i { width: 11px; height: 11px; border-radius: 50%; background: var(--border); display: block; }
+.brand { font-family: var(--font-display); font-size: 20px; padding: 0 8px 10px; }
+.nav { padding: 6px 10px; border-radius: 6px; color: var(--fg2); display: flex; justify-content: space-between; align-items: center; }
+.nav.on { background: var(--sel); color: var(--fg); font-weight: 500; }
+.side .grp { margin: 12px 8px 4px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--fg3); }
+.conn { margin-top: auto; padding: 8px 10px; font-size: 12.5px; color: var(--fg2); display: flex; align-items: center; gap: 7px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: none; }
+.dot.off { background: var(--warn); }
+.pane { padding: 22px 26px; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.pane h4 { font: 500 22px var(--font-display); margin: 0; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+.row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.btn { font: 500 13px var(--font-sans); border-radius: 6px; padding: 6px 12px; border: 1px solid var(--border); background: var(--card); color: var(--fg); cursor: pointer; }
+.btn.pri { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pill { font-size: 11.5px; font-weight: 500; padding: 2px 8px; border-radius: 99px; background: var(--side); color: var(--fg2); border: 1px solid var(--border); white-space: nowrap; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+.pill.warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+.pill.acc { background: var(--sel); color: var(--accent); border-color: transparent; }
+.muted { color: var(--fg3); font-size: 13px; }
+.qrwrap { display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: center; }
+canvas.qr { width: 196px; height: 196px; background: #fff; border-radius: 8px; border: 1px solid var(--border); padding: 10px; image-rendering: pixelated; }
+.steps { margin: 0; padding-left: 20px; color: var(--fg2); font-size: 14px; }
+.field { display: grid; gap: 4px; font-size: 13px; }
+.field label { color: var(--fg2); font-weight: 500; }
+.input { border: 1px solid var(--border); background: var(--card); border-radius: 6px; padding: 7px 10px; font-size: 13.5px; color: var(--fg); }
+.input.area { min-height: 84px; line-height: 1.5; font-family: var(--font-display); font-size: 14.5px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; font-size: 12.5px; }
+.seg span { padding: 5px 10px; color: var(--fg2); background: var(--card); }
+.seg span.on { background: var(--sel); color: var(--accent); font-weight: 500; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.feed { display: grid; gap: 10px; }
+.ev { display: grid; grid-template-columns: 54px 1fr; gap: 10px; font-size: 13.5px; }
+.ev time { color: var(--fg3); font: 12px var(--font-mono); padding-top: 2px; font-variant-numeric: tabular-nums; }
+.bubble { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; }
+.bubble.draft { border-color: var(--warn); border-style: dashed; }
+.bubble .who { font-weight: 600; font-size: 12.5px; color: var(--fg2); margin-bottom: 2px; }
+.bubble .txt { font-family: var(--font-display); font-size: 14.5px; }
+.diff { font: 12px var(--font-mono); color: var(--ok); margin-top: 6px; }
+
+/* ---------- flow diagram ---------- */
+.flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; align-items: stretch; }
+.step { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; font-size: 13.5px; position: relative; }
+.step b { display: block; font-family: var(--font-display); font-weight: 500; font-size: 16px; margin-bottom: 4px; }
+.step .k { font: 500 11px var(--font-mono); color: var(--accent); }
+.step:not(:last-child)::after { content: "→"; position: absolute; right: -10px; top: 50%; transform: translate(50%, -50%); color: var(--fg3); }
+
+@media (max-width: 760px) {
+  .win { grid-template-columns: 1fr; }
+  .side { display: none; }
+  .qrwrap, .grid2 { grid-template-columns: 1fr; }
+  .flow { grid-template-columns: 1fr; }
+  .step:not(:last-child)::after { content: "↓"; right: 50%; top: auto; bottom: -10px; transform: translate(50%, 50%); }
+  h1 { font-size: 34px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<main>
+
+<header class="prose">
+  <h1>Recado</h1>
+  <p class="lede">A small Mac app that logs in to WhatsApp as you and lets Claude agents answer the chats and groups you give them. Each agent has its own git repo, and what it learns stays there.</p>
+  <p class="meta">Design for approval · built on Notted (Go + Wails + React) · repo <span class="mono">github.com/GabiHert/recado</span> (private) · 4 Nov 2026</p>
+</header>
+
+<section class="prose">
+  <span class="num">01 · WHAT IT DOES</span>
+  <h2>Three things, nothing more</h2>
+  <ol>
+    <li><strong>Connect WhatsApp.</strong> Scan a QR code once. Recado becomes a linked device on your own number, the same as WhatsApp Web.</li>
+    <li><strong>Create agents.</strong> An agent is a name, instructions, a git repo for its knowledge, the chats it watches, and rules for when it answers.</li>
+    <li><strong>Let them work.</strong> When a watched chat gets a message, the agent's Claude Code run reads the recent conversation and its repo. It answers or stays quiet, and it can write what it learned back to the repo. You can see every message, reply and knowledge commit in Activity.</li>
+  </ol>
+  <p>It uses your own Claude Code login, the same way Notted does. You don't need an API key.</p>
+</section>
+
+<section>
+  <div class="prose">
+    <span class="num">02 · SCREENS</span>
+    <h2>How it looks</h2>
+    <p>The window has a sidebar with three views. It uses Notted's palette and type and follows the Mac's light or dark mode.</p>
+  </div>
+  <div class="shots">
+
+    <figure style="margin:0">
+      <div class="win" aria-label="Mockup: WhatsApp view">
+        <div class="side">
+          <div class="lights"><i></i><i></i><i></i></div>
+          <div class="brand">Recado</div>
+          <div class="nav on">WhatsApp</div>
+          <div class="nav">Agents <span class="pill">2</span></div>
+          <div class="nav">Activity</div>
+          <div class="conn"><span class="dot off"></span>Not connected</div>
+        </div>
+        <div class="pane">
+          <h4>Connect WhatsApp</h4>
+          <div class="card qrwrap">
+            <canvas class="qr" id="qr" width="33" height="33" aria-label="QR code example"></canvas>
+            <div>
+              <ol class="steps">
+                <li>On your phone, open WhatsApp.</li>
+                <li>Go to <strong>Settings › Linked devices › Link a device</strong>.</li>
+                <li>Point the camera at this code.</li>
+              </ol>
+              <p class="muted" style="margin-top:12px">The code refreshes every 20 seconds. Recado stays linked after you quit it. Use <strong>Log out</strong> to unlink it.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="row" style="justify-content:space-between">
+              <div><strong style="font-weight:600">After you connect</strong><div class="muted">Shows your number, the connection state, and your chats and groups, with the agent that handles each one.</div></div>
+              <button class="btn" type="button">Log out</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap">WhatsApp. The QR code comes from the WhatsApp linking flow and is drawn in the window, not in a browser tab like the old bot's <span class="mono">qr.html</span>.</figcaption>
+    </figure>
+
+    <figure style="margin:0">
+      <div class="win" aria-label="Mockup: agent editor">
+        <div class="side">
+          <div class="lights"><i></i><i></i><i></i></div>
+          <div class="brand">Recado</div>
+          <div class="nav">WhatsApp</div>
+          <div class="nav on">Agents <span class="pill">2</span></div>
+          <div class="grp">Agents</div>
+          <div class="nav on">Checagem <span class="pill ok">Auto</span></div>
+          <div class="nav">Família <span class="pill warn">Approve</span></div>
+          <div class="nav">Activity</div>
+          <div class="conn"><span class="dot"></span>+55 51 9•••• 4412</div>
+        </div>
+        <div class="pane">
+          <div class="row" style="justify-content:space-between">
+            <h4>Checagem</h4>
+            <div class="row"><span class="pill ok">On</span><button class="btn" type="button">Open repo in Claude Code</button><button class="btn pri" type="button">Save</button></div>
+          </div>
+          <div class="grid2">
+            <div class="field"><label for="m-name">Name</label><div class="input" id="m-name">Checagem</div></div>
+            <div class="field"><label for="m-repo">Knowledge repo</label><div class="input mono" id="m-repo">~/Documents/Personal/checagem-kb</div></div>
+          </div>
+          <div class="field"><label for="m-ins">Instructions</label>
+            <div class="input area" id="m-ins">You fact-check election claims sent to the group. Answer in Portuguese, briefly, citing the official TSE results. If a claim is new, write what you found to knowledge/claims/. Ignore small talk.</div>
+          </div>
+          <div class="field"><label>Chats</label>
+            <div class="chips"><span class="pill acc">Fraude nas urnas ×</span><span class="pill acc">Mãe ×</span><span class="pill">+ Add chat</span></div>
+          </div>
+          <div class="row" style="gap:22px">
+            <div class="field"><label>Answers</label><div class="seg"><span class="on">On its own</span><span>After I approve</span><span>Never (only learns)</span></div></div>
+            <div class="field"><label>Reacts to</label><div class="seg"><span>Every message</span><span class="on">Mentions and replies</span></div></div>
+            <div class="field"><label>Prefix</label><div class="input" style="width:64px">🤖</div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap">Agents. A chat belongs to one agent at a time. "Open repo in Claude Code" opens the agent's repo in an interactive terminal session, so you can teach it or tidy its knowledge by hand.</figcaption>
+    </figure>
+
+    <figure style="margin:0">
+      <div class="win" aria-label="Mockup: activity feed">
+        <div class="side">
+          <div class="lights"><i></i><i></i><i></i></div>
+          <div class="brand">Recado</div>
+          <div class="nav">WhatsApp</div>
+          <div class="nav">Agents <span class="pill">2</span></div>
+          <div class="nav on">Activity <span class="pill warn">1</span></div>
+          <div class="conn"><span class="dot"></span>+55 51 9•••• 4412</div>
+        </div>
+        <div class="pane">
+          <div class="row" style="justify-content:space-between"><h4>Activity</h4><span class="muted">All agents · today</span></div>
+          <div class="feed">
+            <div class="ev"><time>14:02</time><div class="bubble"><div class="who">Marcos · Fraude nas urnas</div><div class="txt">@robô esse vídeo de Canoas mostra urna com voto pronto?</div></div></div>
+            <div class="ev"><time>14:03</time><div class="bubble"><div class="who">Checagem replied <span class="pill ok">Sent</span></div><div class="txt">🤖 Não. A seção 0142 de Canoas teve 312 votos no boletim de urna publicado pelo TSE, e o vídeo é de um teste público de 2022…</div><div class="diff">+ knowledge/claims/canoas-urna-pronta.md · commit 3f9a1c2</div></div></div>
+            <div class="ev"><time>14:10</time><div class="bubble draft"><div class="who">Família wants to reply to Mãe <span class="pill warn">Waiting for you</span></div><div class="txt">Oi mãe! O Gabriel está numa reunião até as 16h, ele te liga depois.</div>
+              <div class="row" style="margin-top:8px"><button class="btn pri" type="button">Send</button><button class="btn" type="button">Edit</button><button class="btn" type="button">Discard</button></div></div></div>
+            <div class="ev"><time>14:11</time><div class="bubble"><div class="who">Checagem stayed quiet <span class="pill">No reply</span></div><div class="muted">"bom dia pessoal" in Fraude nas urnas. Small talk, ignored.</div></div></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="cap">Activity. Every run shows here: what came in, what the agent did, and any knowledge commit. Replies from agents set to "After I approve" wait here until you send them. macOS sends a notification when a reply needs you.</figcaption>
+    </figure>
+
+  </div>
+</section>
+
+<section>
+  <div class="prose">
+    <span class="num">03 · ONE MESSAGE, START TO END</span>
+    <h2>What happens when a message arrives</h2>
+  </div>
+  <div class="flow">
+    <div class="step"><span class="k">whatsmeow</span><b>Message in</b>Recado gets it from WhatsApp and adds it to that chat's history.</div>
+    <div class="step"><span class="k">router</span><b>Find the agent</b>The agent that owns the chat. Its trigger rule decides if this message counts.</div>
+    <div class="step"><span class="k">debounce 8 s</span><b>Wait for the burst</b>People send three short messages in a row, so the agent answers once for all of them.</div>
+    <div class="step"><span class="k">claude -p</span><b>Agent run</b>Runs in the agent's repo with the last 40 messages. Returns a reply or <span class="mono">NO_REPLY</span>.</div>
+    <div class="step"><span class="k">git</span><b>Reply + commit</b>Sends or queues the reply. Commits any repo changes, and pushes if a remote is set.</div>
+  </div>
+  <div class="prose" style="margin-top:18px">
+    <p>One run per chat at a time. Messages that arrive during a run go into the next run. Messages you send yourself are kept as context but never start a run, and the agent never answers its own messages. That keeps it from looping.</p>
+  </div>
+</section>
+
+<section class="prose">
+  <span class="num">04 · THE AGENT RUN</span>
+  <h2>How Claude Code is called</h2>
+  <p>Recado finds and launches <code>claude</code> the way Notted does: it reads the login shell's environment, drops <code>ANTHROPIC_API_KEY</code> so your subscription is used, and kills the process group on timeout.</p>
+<pre>cd ~/Documents/Personal/checagem-kb
+claude -p --output-format json \
+  --append-system-prompt-file &lt;recado protocol + agent instructions&gt; \
+  --permission-mode acceptEdits \
+  --allowedTools "Read Write Edit Glob Grep WebSearch WebFetch" \
+  &lt; prompt.md      # chat name, last 40 messages, the new ones marked</pre>
+  <p>The protocol tells the agent three things. Its final answer is the WhatsApp message, or exactly <code>NO_REPLY</code>. The repo is its memory: read <code>CLAUDE.md</code> and <code>knowledge/</code> first and write lasting facts back. It doesn't run git, because Recado commits for it.</p>
+  <p>The agent has no Bash and can't reach outside its repo, so a message in a group can't make it run commands on your Mac. You can turn on more tools for each agent.</p>
+</section>
+
+<section class="prose">
+  <span class="num">05 · THE KNOWLEDGE REPO</span>
+  <h2>Where knowledge grows</h2>
+  <p>Pick an empty folder or an existing repo. If it's empty, Recado sets it up:</p>
+<pre>checagem-kb/
+├── CLAUDE.md          # who the agent is, how to keep knowledge (you and the agent both edit it)
+├── knowledge/         # facts, people, decisions, FAQs, one topic per file
+│   └── people.md      # who is who in the chats
+└── .recado/           # chat history snapshots the agent can grep (gitignored)</pre>
+  <p>Each run that changes files becomes a commit such as <code>Checagem: learned from "Fraude nas urnas" (2 files)</code>. Git history shows what the agent learned and when, and <code>git revert</code> undoes a bad lesson. Push to GitHub is optional for each agent.</p>
+  <div class="callout">Chat logs stay in Recado's app folder and the gitignored <code>.recado/</code>, never in a commit, unless you tell the agent to keep a summary.</div>
+</section>
+
+<section class="prose">
+  <span class="num">06 · ARCHITECTURE</span>
+  <h2>Built on Notted</h2>
+  <p>Recado starts as a copy of Notted and keeps its layers, its Wails setup, the Claude Code launcher, the git client and the build and signing scripts. The meeting parts (audio capture, transcription, forms, MCP) come out.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Package</th><th>From Notted</th><th>Job in Recado</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">domain</td><td>new</td><td>Agent, Chat, Message, Run, Draft, trigger and answer rules</td></tr>
+      <tr><td class="mono">application/service</td><td>pattern kept</td><td>Router (chat → agent, debounce, one run per chat), AgentService, DraftService, KnowledgeService</td></tr>
+      <tr><td class="mono">integration/whatsapp</td><td>new</td><td>whatsmeow client: QR pairing, events, send, groups and contact names</td></tr>
+      <tr><td class="mono">integration/claude</td><td>kept, trimmed</td><td>Env discovery and runner, with JSON output and write tools</td></tr>
+      <tr><td class="mono">integration/git</td><td>kept</td><td>Init repo, commit after a run, optional push</td></tr>
+      <tr><td class="mono">integration/process</td><td>kept</td><td>"Open repo in Claude Code" terminal (xterm, as in Notted)</td></tr>
+      <tr><td class="mono">infra/store</td><td>kept (sqlite)</td><td>Agents, chats, message history, runs, drafts. whatsmeow keeps its session in its own sqlite file</td></tr>
+      <tr><td class="mono">infra/wails + frontend</td><td>kept, new views</td><td>WhatsApp, Agents, Activity in React + TypeScript</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted" style="margin-top:8px">App data lives in <span class="mono">~/Library/Application Support/Recado/</span>. One app instance at a time, because two clients on one WhatsApp session break the link (the old bot learned this with <span class="mono">bot.pid</span>).</p>
+</section>
+
+<section class="prose">
+  <span class="num">07 · ONE CHANGE FROM THE OLD BOT</span>
+  <h2>whatsmeow instead of whatsapp-web.js</h2>
+  <p>The old bot drives WhatsApp Web in headless Chrome through Puppeteer. It works, but most of <span class="mono">bot.js</span> handles that setup breaking: a pinned web version, a patch for the missing <span class="mono">ready</span> event, restarts on "detached Frame", and the <span class="mono">_serialized</span> to <span class="mono">$1</span> rename.</p>
+  <p><a href="https://github.com/tulir/whatsmeow">whatsmeow</a> is a Go library that speaks WhatsApp's multi-device protocol directly. Login works the same way (QR code, linked device, your number), but it runs inside the Go binary with no Node, Chrome or page to lose. It also powers the mautrix WhatsApp bridge, which is widely used.</p>
+  <div class="callout warn"><strong>Risk, same as the old bot:</strong> automating a personal account is against WhatsApp's terms, and an account that sends a lot of automated messages can be banned. Recado limits each agent to 20 replies an hour by default, and new agents start on "After I approve".</div>
+</section>
+
+<section class="prose">
+  <span class="num">08 · BUILD ORDER</span>
+  <h2>Milestones</h2>
+  <ol>
+    <li><strong>Skeleton.</strong> Copy Notted, rename to Recado, remove the meeting code, open an empty three-view window.</li>
+    <li><strong>WhatsApp.</strong> QR login, connection state, log out, list of chats and groups, incoming messages stored.</li>
+    <li><strong>Agents.</strong> Create and edit agents, set up the repo, assign chats.</li>
+    <li><strong>Runs.</strong> Router, debounce, Claude Code run, reply or <span class="mono">NO_REPLY</span>, commit after the run.</li>
+    <li><strong>Activity and approval.</strong> Feed, drafts with Send, Edit and Discard, notifications, rate limit.</li>
+    <li><strong>Polish.</strong> "Open repo in Claude Code", build and install with <span class="mono">make install</span>, README.</li>
+  </ol>
+  <h3>Left out of v1</h3>
+  <ul>
+    <li>Images, audio and documents. The agent sees <span class="mono">[image: caption]</span>, and transcribing voice notes can come later with Notted's local speech engine.</li>
+    <li>Scheduled messages, or agents that start conversations.</li>
+    <li>More than one WhatsApp account.</li>
+  </ul>
+</section>
+
+<section class="prose">
+  <span class="num">09 · FOR YOU TO DECIDE</span>
+  <h2>Before I build</h2>
+  <ol>
+    <li><strong>Name.</strong> "Recado" (Portuguese for a message you leave for someone). Rename freely.</li>
+    <li><strong>whatsmeow.</strong> OK to switch from whatsapp-web.js? (Recommended.)</li>
+    <li><strong>Default tools.</strong> Read, write and web only, with Bash off? (Recommended.)</li>
+    <li><strong>Language.</strong> App interface in English like Notted, with agents answering in whatever language you put in their instructions?</li>
+  </ol>
+</section>
+
+</main>
+<script>
+// Example QR pattern for the mockup. It is decorative and not scannable.
+(function () {
+  const c = document.getElementById("qr"); if (!c) return;
+  const x = c.getContext("2d"), n = 33;
+  let s = 7; const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  x.fillStyle = "#fff"; x.fillRect(0, 0, n, n); x.fillStyle = "#1d2330";
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) if (rnd() > 0.52) x.fillRect(i, j, 1, 1);
+  const finder = (a, b) => { x.fillStyle = "#fff"; x.fillRect(a - 1, b - 1, 9, 9); x.fillStyle = "#1d2330"; x.fillRect(a, b, 7, 7); x.fillStyle = "#fff"; x.fillRect(a + 1, b + 1, 5, 5); x.fillStyle = "#1d2330"; x.fillRect(a + 2, b + 2, 3, 3); };
+  finder(0, 0); finder(n - 7, 0); finder(0, n - 7);
+})();
+</script>
+</body>
+</html>
