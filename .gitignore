@@ -5,3 +5,4 @@ frontend/dist/*
 !frontend/dist/.gitkeep
 *.sqlite
 *.db
+frontend/package.json.md5

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Recado Design</title>
+<title>Deputy Design</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap" rel="stylesheet">
@@ -143,16 +143,16 @@ canvas.qr { width: 196px; height: 196px; background: #fff; border-radius: 8px; b
 <main>
 
 <header class="prose">
-  <h1>Recado</h1>
+  <h1>Deputy</h1>
   <p class="lede">A small Mac app that logs in to WhatsApp as you and lets Claude agents answer the chats and groups you give them. Each agent has its own git repo, and what it learns stays there.</p>
-  <p class="meta">Design for approval · built on Notted (Go + Wails + React) · repo <span class="mono">github.com/GabiHert/recado</span> (private) · 4 Nov 2026</p>
+  <p class="meta">Design for approval · built on Notted (Go + Wails + React) · repo <span class="mono">github.com/GabiHert/deputy</span> (private) · 4 Nov 2026</p>
 </header>
 
 <section class="prose">
   <span class="num">01 · WHAT IT DOES</span>
   <h2>Three things, nothing more</h2>
   <ol>
-    <li><strong>Connect WhatsApp.</strong> Scan a QR code once. Recado becomes a linked device on your own number, the same as WhatsApp Web.</li>
+    <li><strong>Connect WhatsApp.</strong> Scan a QR code once. Deputy becomes a linked device on your own number, the same as WhatsApp Web.</li>
     <li><strong>Create agents.</strong> An agent is a name, instructions, a git repo for its knowledge, the chats it watches, and rules for when it answers.</li>
     <li><strong>Let them work.</strong> When a watched chat gets a message, the agent's Claude Code run reads the recent conversation and its repo. It answers or stays quiet, and it can write what it learned back to the repo. You can see every message, reply and knowledge commit in Activity.</li>
   </ol>
@@ -171,7 +171,7 @@ canvas.qr { width: 196px; height: 196px; background: #fff; border-radius: 8px; b
       <div class="win" aria-label="Mockup: WhatsApp view">
         <div class="side">
           <div class="lights"><i></i><i></i><i></i></div>
-          <div class="brand">Recado</div>
+          <div class="brand">Deputy</div>
           <div class="nav on">WhatsApp</div>
           <div class="nav">Agents <span class="pill">2</span></div>
           <div class="nav">Activity</div>
@@ -187,7 +187,7 @@ canvas.qr { width: 196px; height: 196px; background: #fff; border-radius: 8px; b
                 <li>Go to <strong>Settings › Linked devices › Link a device</strong>.</li>
                 <li>Point the camera at this code.</li>
               </ol>
-              <p class="muted" style="margin-top:12px">The code refreshes every 20 seconds. Recado stays linked after you quit it. Use <strong>Log out</strong> to unlink it.</p>
+              <p class="muted" style="margin-top:12px">The code refreshes every 20 seconds. Deputy stays linked after you quit it. Use <strong>Log out</strong> to unlink it.</p>
             </div>
           </div>
           <div class="card">
@@ -205,7 +205,7 @@ canvas.qr { width: 196px; height: 196px; background: #fff; border-radius: 8px; b
       <div class="win" aria-label="Mockup: agent editor">
         <div class="side">
           <div class="lights"><i></i><i></i><i></i></div>
-          <div class="brand">Recado</div>
+          <div class="brand">Deputy</div>
           <div class="nav">WhatsApp</div>
           <div class="nav on">Agents <span class="pill">2</span></div>
           <div class="grp">Agents</div>
@@ -243,7 +243,7 @@ canvas.qr { width: 196px; height: 196px; background: #fff; border-radius: 8px; b
       <div class="win" aria-label="Mockup: activity feed">
         <div class="side">
           <div class="lights"><i></i><i></i><i></i></div>
-          <div class="brand">Recado</div>
+          <div class="brand">Deputy</div>
           <div class="nav">WhatsApp</div>
           <div class="nav">Agents <span class="pill">2</span></div>
           <div class="nav on">Activity <span class="pill warn">1</span></div>
@@ -272,7 +272,7 @@ canvas.qr { width: 196px; height: 196px; background: #fff; border-radius: 8px; b
     <h2>What happens when a message arrives</h2>
   </div>
   <div class="flow">
-    <div class="step"><span class="k">whatsmeow</span><b>Message in</b>Recado gets it from WhatsApp and adds it to that chat's history.</div>
+    <div class="step"><span class="k">whatsmeow</span><b>Message in</b>Deputy gets it from WhatsApp and adds it to that chat's history.</div>
     <div class="step"><span class="k">router</span><b>Find the agent</b>The agent that owns the chat. Its trigger rule decides if this message counts.</div>
     <div class="step"><span class="k">debounce 8 s</span><b>Wait for the burst</b>People send three short messages in a row, so the agent answers once for all of them.</div>
     <div class="step"><span class="k">claude -p</span><b>Agent run</b>Runs in the agent's repo with the last 40 messages. Returns a reply or <span class="mono">NO_REPLY</span>.</div>
@@ -286,36 +286,36 @@ canvas.qr { width: 196px; height: 196px; background: #fff; border-radius: 8px; b
 <section class="prose">
   <span class="num">04 · THE AGENT RUN</span>
   <h2>How Claude Code is called</h2>
-  <p>Recado finds and launches <code>claude</code> the way Notted does: it reads the login shell's environment, drops <code>ANTHROPIC_API_KEY</code> so your subscription is used, and kills the process group on timeout.</p>
+  <p>Deputy finds and launches <code>claude</code> the way Notted does: it reads the login shell's environment, drops <code>ANTHROPIC_API_KEY</code> so your subscription is used, and kills the process group on timeout.</p>
 <pre>cd ~/Documents/Personal/checagem-kb
 claude -p --output-format json \
-  --append-system-prompt-file &lt;recado protocol + agent instructions&gt; \
+  --append-system-prompt-file &lt;deputy protocol + agent instructions&gt; \
   --permission-mode acceptEdits \
   --allowedTools "Read Write Edit Glob Grep WebSearch WebFetch" \
   &lt; prompt.md      # chat name, last 40 messages, the new ones marked</pre>
-  <p>The protocol tells the agent three things. Its final answer is the WhatsApp message, or exactly <code>NO_REPLY</code>. The repo is its memory: read <code>CLAUDE.md</code> and <code>knowledge/</code> first and write lasting facts back. It doesn't run git, because Recado commits for it.</p>
+  <p>The protocol tells the agent three things. Its final answer is the WhatsApp message, or exactly <code>NO_REPLY</code>. The repo is its memory: read <code>CLAUDE.md</code> and <code>knowledge/</code> first and write lasting facts back. It doesn't run git, because Deputy commits for it.</p>
   <p>The agent has no Bash and can't reach outside its repo, so a message in a group can't make it run commands on your Mac. You can turn on more tools for each agent.</p>
 </section>
 
 <section class="prose">
   <span class="num">05 · THE KNOWLEDGE REPO</span>
   <h2>Where knowledge grows</h2>
-  <p>Pick an empty folder or an existing repo. If it's empty, Recado sets it up:</p>
+  <p>Pick an empty folder or an existing repo. If it's empty, Deputy sets it up:</p>
 <pre>checagem-kb/
 ├── CLAUDE.md          # who the agent is, how to keep knowledge (you and the agent both edit it)
 ├── knowledge/         # facts, people, decisions, FAQs, one topic per file
 │   └── people.md      # who is who in the chats
-└── .recado/           # chat history snapshots the agent can grep (gitignored)</pre>
+└── .deputy/           # chat history snapshots the agent can grep (gitignored)</pre>
   <p>Each run that changes files becomes a commit such as <code>Checagem: learned from "Fraude nas urnas" (2 files)</code>. Git history shows what the agent learned and when, and <code>git revert</code> undoes a bad lesson. Push to GitHub is optional for each agent.</p>
-  <div class="callout">Chat logs stay in Recado's app folder and the gitignored <code>.recado/</code>, never in a commit, unless you tell the agent to keep a summary.</div>
+  <div class="callout">Chat logs stay in Deputy's app folder and the gitignored <code>.deputy/</code>, never in a commit, unless you tell the agent to keep a summary.</div>
 </section>
 
 <section class="prose">
   <span class="num">06 · ARCHITECTURE</span>
   <h2>Built on Notted</h2>
-  <p>Recado starts as a copy of Notted and keeps its layers, its Wails setup, the Claude Code launcher, the git client and the build and signing scripts. The meeting parts (audio capture, transcription, forms, MCP) come out.</p>
+  <p>Deputy starts as a copy of Notted and keeps its layers, its Wails setup, the Claude Code launcher, the git client and the build and signing scripts. The meeting parts (audio capture, transcription, forms, MCP) come out.</p>
   <div class="tablewrap"><table>
-    <thead><tr><th>Package</th><th>From Notted</th><th>Job in Recado</th></tr></thead>
+    <thead><tr><th>Package</th><th>From Notted</th><th>Job in Deputy</th></tr></thead>
     <tbody>
       <tr><td class="mono">domain</td><td>new</td><td>Agent, Chat, Message, Run, Draft, trigger and answer rules</td></tr>
       <tr><td class="mono">application/service</td><td>pattern kept</td><td>Router (chat → agent, debounce, one run per chat), AgentService, DraftService, KnowledgeService</td></tr>
@@ -327,7 +327,7 @@ claude -p --output-format json \
       <tr><td class="mono">infra/wails + frontend</td><td>kept, new views</td><td>WhatsApp, Agents, Activity in React + TypeScript</td></tr>
     </tbody>
   </table></div>
-  <p class="muted" style="margin-top:8px">App data lives in <span class="mono">~/Library/Application Support/Recado/</span>. One app instance at a time, because two clients on one WhatsApp session break the link (the old bot learned this with <span class="mono">bot.pid</span>).</p>
+  <p class="muted" style="margin-top:8px">App data lives in <span class="mono">~/Library/Application Support/Deputy/</span>. One app instance at a time, because two clients on one WhatsApp session break the link (the old bot learned this with <span class="mono">bot.pid</span>).</p>
 </section>
 
 <section class="prose">
@@ -335,23 +335,29 @@ claude -p --output-format json \
   <h2>whatsmeow instead of whatsapp-web.js</h2>
   <p>The old bot drives WhatsApp Web in headless Chrome through Puppeteer. It works, but most of <span class="mono">bot.js</span> handles that setup breaking: a pinned web version, a patch for the missing <span class="mono">ready</span> event, restarts on "detached Frame", and the <span class="mono">_serialized</span> to <span class="mono">$1</span> rename.</p>
   <p><a href="https://github.com/tulir/whatsmeow">whatsmeow</a> is a Go library that speaks WhatsApp's multi-device protocol directly. Login works the same way (QR code, linked device, your number), but it runs inside the Go binary with no Node, Chrome or page to lose. It also powers the mautrix WhatsApp bridge, which is widely used.</p>
-  <div class="callout warn"><strong>Risk, same as the old bot:</strong> automating a personal account is against WhatsApp's terms, and an account that sends a lot of automated messages can be banned. Recado limits each agent to 20 replies an hour by default, and new agents start on "After I approve".</div>
+  <div class="callout warn"><strong>Risk, same as the old bot:</strong> automating a personal account is against WhatsApp's terms, and an account that sends a lot of automated messages can be banned. Deputy limits each agent to 20 replies an hour by default, and new agents start on "After I approve".</div>
 </section>
 
 <section class="prose">
   <span class="num">08 · BUILD ORDER</span>
   <h2>Milestones</h2>
   <ol>
-    <li><strong>Skeleton.</strong> Copy Notted, rename to Recado, remove the meeting code, open an empty three-view window.</li>
+    <li><strong>Skeleton.</strong> Copy Notted, rename to Deputy, remove the meeting code, open an empty three-view window.</li>
     <li><strong>WhatsApp.</strong> QR login, connection state, log out, list of chats and groups, incoming messages stored.</li>
     <li><strong>Agents.</strong> Create and edit agents, set up the repo, assign chats.</li>
     <li><strong>Runs.</strong> Router, debounce, Claude Code run, reply or <span class="mono">NO_REPLY</span>, commit after the run.</li>
     <li><strong>Activity and approval.</strong> Feed, drafts with Send, Edit and Discard, notifications, rate limit.</li>
     <li><strong>Polish.</strong> "Open repo in Claude Code", build and install with <span class="mono">make install</span>, README.</li>
   </ol>
+  <h3>In v1</h3>
+  <ul>
+    <li>Photos go to the agent, which reads them with Claude Code.</li>
+    <li>Voice notes are transcribed on the Mac with Notted's local Whisper engine.</li>
+    <li>Agents can attach images from their repo and, optionally, answer with a spoken voice note.</li>
+  </ul>
   <h3>Left out of v1</h3>
   <ul>
-    <li>Images, audio and documents. The agent sees <span class="mono">[image: caption]</span>, and transcribing voice notes can come later with Notted's local speech engine.</li>
+    <li>Documents and video. The agent sees the caption only.</li>
     <li>Scheduled messages, or agents that start conversations.</li>
     <li>More than one WhatsApp account.</li>
   </ul>
@@ -361,7 +367,7 @@ claude -p --output-format json \
   <span class="num">09 · FOR YOU TO DECIDE</span>
   <h2>Before I build</h2>
   <ol>
-    <li><strong>Name.</strong> "Recado" (Portuguese for a message you leave for someone). Rename freely.</li>
+    <li><strong>Name.</strong> Deputy: it acts on your behalf in your chats.</li>
     <li><strong>whatsmeow.</strong> OK to switch from whatsapp-web.js? (Recommended.)</li>
     <li><strong>Default tools.</strong> Read, write and web only, with Bash off? (Recommended.)</li>
     <li><strong>Language.</strong> App interface in English like Notted, with agents answering in whatever language you put in their instructions?</li>
