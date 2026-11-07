@@ -31,7 +31,10 @@ func toolsFor(purpose string) []string {
 	if purpose == PurposeBoard {
 		return append(t, "set_board")
 	}
-	return append(t, "propose_agent", "propose_change")
+	if purpose == PurposeAsk {
+		return append(t, "propose_message", "propose_change")
+	}
+	return append(t, "propose_agent", "propose_change", "propose_message")
 }
 
 // toolServer serves Deputy's tools to Claude Code over MCP on localhost, behind a per-launch token.
@@ -145,6 +148,13 @@ type proposeAgentIn struct {
 	Language        string   `json:"language,omitempty" jsonschema:"pt-BR or en: the chat's spoken language, for voice notes"`
 	Instructions    string   `json:"instructions" jsonschema:"the whole INSTRUCTIONS.md, written to the agent in second person"`
 	Knowledge       []fileIn `json:"knowledge,omitempty" jsonschema:"starting knowledge files"`
+}
+
+type proposeMessageIn struct {
+	Chat   string `json:"chat" jsonschema:"the chat JID to send to (from list_chats)"`
+	Text   string `json:"text" jsonschema:"the exact message, written as it should arrive"`
+	Agent  string `json:"agent,omitempty" jsonschema:"the agent ID to send it as (adds its prefix and logs it as its reply); leave out to send as the owner"`
+	Reason string `json:"reason,omitempty" jsonschema:"one short line on why, shown on the card"`
 }
 
 type proposeChangeIn struct {
@@ -334,7 +344,8 @@ func (s *Service) mcpServer(chatID string) *mcp.Server {
 				"id": ag.ID, "name": ag.Name, "enabled": ag.Enabled, "mode": ag.Mode, "trigger": ag.Trigger,
 				"maxPerHour": ag.MaxPerHour, "readImages": ag.ReadImages, "transcribeVoice": ag.TranscribeVoice,
 				"voiceReplies": ag.VoiceReplies, "sendImages": ag.SendImages, "language": ag.Language, "prefix": ag.Prefix,
-				"chats": chats, "instructions": repo.Instructions(), "knowledgeFiles": repo.KnowledgeFiles(),
+				"chats": chats, "allDirectChats": ag.AllDirect, "answersOwnerMessages": ag.AnswerMe, "skipsDirectChats": ag.Except,
+				"instructions": repo.Instructions(), "knowledgeFiles": repo.KnowledgeFiles(),
 			}), nil, nil
 		})
 
@@ -452,6 +463,16 @@ func (s *Service) mcpServer(chatID string) *mcp.Server {
 			return text(cardSent), nil, nil
 		})
 
+	mcp.AddTool(srv, &mcp.Tool{Name: "propose_message", Description: "Draft a WhatsApp message to one chat as a card. Nothing is sent until the owner clicks Send; they can edit it first. Use this whenever they ask you or an agent to send, answer or tell someone something."},
+		func(ctx context.Context, _ *H, in proposeMessageIn) (*mcp.CallToolResult, any, error) {
+			p, errs := s.messageProposal(in)
+			if len(errs) > 0 {
+				return fail("Not shown. Fix these:\n- " + strings.Join(errs, "\n- ")), nil, nil
+			}
+			s.add(chatID, "card", "", &app.CardDTO{Kind: "message", Status: "open", Message: p})
+			return text(cardSent), nil, nil
+		})
+
 	mcp.AddTool(srv, &mcp.Tool{Name: "propose_change", Description: "Propose a change to an existing agent (its INSTRUCTIONS.md, knowledge files or settings) as a card. Nothing changes until the owner clicks Apply."},
 		func(ctx context.Context, _ *H, in proposeChangeIn) (*mcp.CallToolResult, any, error) {
 			p, errs := s.changeProposal(in)
@@ -519,6 +540,31 @@ func validFiles(in []fileIn) ([]app.FileDTO, []string) {
 		out = append(out, app.FileDTO{Path: p, Content: f.Content, Summary: f.Summary})
 	}
 	return out, errs
+}
+
+func (s *Service) messageProposal(in proposeMessageIn) (*app.MessageProposalDTO, []string) {
+	var errs []string
+	p := &app.MessageProposalDTO{Text: strings.TrimSpace(in.Text), Reason: strings.TrimSpace(in.Reason)}
+	if p.Text == "" {
+		errs = append(errs, "text is empty")
+	} else if len([]rune(p.Text)) > 4000 {
+		errs = append(errs, "text must be under 4000 characters")
+	}
+	c, err := s.d.Store.Chat(strings.TrimSpace(in.Chat))
+	if err != nil {
+		errs = append(errs, fmt.Sprintf("%q is not a known chat; use list_chats and pass its JID", in.Chat))
+	} else {
+		p.ChatJID, p.ChatName = c.JID, c.Name
+	}
+	if id := strings.TrimSpace(in.Agent); id != "" {
+		a, err := s.d.Store.Agent(id)
+		if err != nil {
+			errs = append(errs, fmt.Sprintf("%q is not an agent ID; use list_agents", id))
+		} else {
+			p.AgentID, p.AgentName, p.Prefix = a.ID, a.Name, strings.TrimSpace(a.Prefix)
+		}
+	}
+	return p, errs
 }
 
 func (s *Service) agentProposal(in proposeAgentIn) (*app.AgentProposalDTO, []string) {

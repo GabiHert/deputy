@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { on, useAgents, useStatus, type Agent, type Status } from "./api";
+import { inbox, inboxEvents, on, useAgents, useStatus, type Agent, type Status, type UnreadEvent } from "./api";
 import { Icon, Logo } from "./components/ui";
 import { ChatsView } from "./views/ChatsView";
 import { AgentView } from "./views/AgentView";
@@ -9,7 +9,7 @@ import "./v2.css";
 import { SettingsView } from "./views/SettingsView";
 
 export type View =
-  | { name: "chats" }
+  | { name: "chats"; open?: { jid: string; n: number } }
   | { name: "agent"; id: string } // id "" = new agent
   | { name: "activity" }
   | { name: "new-agent"; n: number }
@@ -30,23 +30,45 @@ export function App() {
     if (!linked) setView((v) => (v.name === "activity" ? { name: "chats" } : v));
   }, [status]);
 
-  useEffect(
-    () =>
-      on("navigate", (to: string) => {
+  useEffect(() => {
+    const offs = [
+      on(inboxEvents.navigate, (to: string) => {
         routed.current = true;
-        if (to === "activity" || to === "chats" || to === "settings") setView({ name: to } as View);
+        if (to === "inbox" || to === "chats") setView((v) => (v.name === "chats" ? v : { name: "chats" }));
+        else if (to === "activity" || to === "settings") setView({ name: to } as View);
         else if (to === "new-agent") setView({ name: "new-agent", n: Date.now() });
         else if (to.startsWith("agent:")) setView({ name: "agent", id: to.slice(6) });
       }),
-    [],
-  );
+      // A notification was clicked: show that chat.
+      on(inboxEvents.openChat, (jid: string) => {
+        routed.current = true;
+        if (jid) setView({ name: "chats", open: { jid, n: Date.now() } });
+      }),
+    ];
+    return () => offs.forEach((f) => f());
+  }, []);
+
+  // Unread WhatsApp messages, for the sidebar badge.
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    inbox
+      .unreadTotal()
+      .then((n) => setUnread(n || 0))
+      .catch(() => {});
+    return on(inboxEvents.unread, (ev: UnreadEvent) => setUnread(ev.total || 0));
+  }, []);
   const openAgent = (id: string) => setView({ name: "agent", id });
 
   return (
     <div className="shell">
-      <Sidebar view={view} setView={setView} agents={agents} status={status} onNewAgent={newAgent} />
-      <main className={view.name === "activity" || view.name === "new-agent" ? "content content--full" : "content"} id="main">
-        {view.name === "chats" && <ChatsView status={status} setStatus={setStatus} agents={agents} />}
+      <Sidebar view={view} setView={setView} agents={agents} status={status} unread={unread} onNewAgent={newAgent} />
+      <main
+        className={view.name === "activity" || view.name === "new-agent" || view.name === "chats" ? "content content--full" : "content"}
+        id="main"
+      >
+        {view.name === "chats" && (
+          <ChatsView status={status} agents={agents} open={view.open ?? null} onOpenAgent={openAgent} onNewAgent={newAgent} />
+        )}
         {view.name === "agent" && (
           <AgentView
             key={view.id || "new"}
@@ -71,12 +93,14 @@ function Sidebar({
   setView,
   agents,
   status,
+  unread,
   onNewAgent,
 }: {
   view: View;
   setView: (v: View) => void;
   agents: Agent[];
   status: Status | null;
+  unread: number;
   onNewAgent: () => void;
 }) {
   const wa = status?.whatsapp;
@@ -123,7 +147,17 @@ function Sidebar({
           </span>
         ) : null,
       )}
-      {navItem("chats", "chats", "WhatsApp chats", () => setView({ name: "chats" }))}
+      {navItem(
+        "chats",
+        "chats",
+        "WhatsApp chats",
+        () => setView({ name: "chats" }),
+        unread > 0 ? (
+          <span className="count count--unread" aria-label={`${unread} unread`}>
+            {unread > 999 ? "999+" : unread}
+          </span>
+        ) : null,
+      )}
       <div className="nav-heading">Agents</div>
       <div className="subnav subnav--flat">
         {agents.map((a) => {

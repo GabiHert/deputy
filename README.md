@@ -28,6 +28,15 @@
 
 An agent's page shows **How it behaves** (its INSTRUCTIONS.md, written by Claude). **Change with Claude** opens a chat about that agent; **Edit text** lets you edit it yourself.
 
+## Use Deputy from Claude Code
+
+Turn on **Settings → Claude Code in other projects** and click **Add to Claude Code**. Claude Code in any folder then has Deputy's tools, so you can say things like "send Ana a WhatsApp saying I'm 20 minutes late", "have the family agent tell the group lunch moved to 1pm", "approve the waiting reply in Work" or "make the Family agent reply on its own".
+
+- There is one tool for each thing you can do in the window: chats, agents, Activity (approve, edit, discard, retry), settings, the board, Deputy's Claude chats and their cards, updates and speech models. Linking a phone and logging out of WhatsApp stay in the window.
+- Chats can be named by name, part of a name, phone number or JID; agents by name or ID.
+- `send_whatsapp_message` sends exactly what you wrote, as you or as an agent. `ask_agent` hands a request to an agent: it runs like a normal run (its knowledge, the chat's history, its voice) and its reply goes out right away, whatever its reply mode, unless you pass `review` to have it wait in Activity. The request shows on the run in Activity.
+- The server listens only on `127.0.0.1:47615` (`DEPUTY_MCP_PORT` changes it) and only while the setting is on. Every request needs the token in `mcp-token` in Deputy's data folder; requests from web pages (a browser `Origin`, or a `Host` other than localhost) are refused. **New token** replaces it; click **Add to Claude Code** again after. **Copy command** gives you the `claude mcp add` line to run yourself; it holds the token, so keep it private.
+
 ## Agents
 
 | Setting | Choices |
@@ -102,6 +111,7 @@ Data lives in `~/Library/Application Support/Deputy/` (`DEPUTY_HOME` overrides i
 | `internal/engine` | Routes messages to agents, waits for bursts, runs Claude Code, delivers or holds replies, commits |
 | `internal/claude` | Finds and runs your `claude` command |
 | `internal/assistant` | Claude chats: runs `claude` with only Deputy's tools, served over MCP on localhost; cards |
+| `internal/mcpserver` | Deputy's tools for Claude Code in other projects, over MCP on localhost |
 | `internal/query` | The board engine's read-only queries |
 | `internal/board` | Board layout, validation and Claude block schedules |
 | `internal/gitrepo` | Sets up and commits knowledge repos |

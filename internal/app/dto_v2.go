@@ -90,7 +90,8 @@ type AssistantChatDTO struct {
 	ID        string `json:"id"`
 	Title     string `json:"title"`
 	Purpose   string `json:"purpose"` // "general" | "new-agent" | "agent" | "board"
-	AgentID   string `json:"agentId"` // for "agent" chats
+	AgentID   string `json:"agentId"` // for "agent" and "ask" chats
+	ChatJID   string `json:"chatJid"` // for "ask" chats: the WhatsApp chat it was opened from
 	Preview   string `json:"preview"` // last line, for the list
 	CreatedAt int64  `json:"createdAt"`
 	UpdatedAt int64  `json:"updatedAt"`
@@ -109,13 +110,14 @@ type AssistantMessageDTO struct {
 
 // CardDTO is an interactive card Claude put in the chat. Only the person's click acts on it.
 type CardDTO struct {
-	Kind    string             `json:"kind"`   // "ask" | "agent" | "change"
-	Status  string             `json:"status"` // "open" | "done" | "dismissed"
-	Result  string             `json:"result"` // what happened, once done
-	Ask     *FormDTO           `json:"ask"`
-	Answers map[string]string  `json:"answers"`
-	Agent   *AgentProposalDTO  `json:"agent"`
-	Change  *ChangeProposalDTO `json:"change"`
+	Kind    string              `json:"kind"`   // "ask" | "agent" | "change" | "message"
+	Status  string              `json:"status"` // "open" | "done" | "dismissed"
+	Result  string              `json:"result"` // what happened, once done
+	Ask     *FormDTO            `json:"ask"`
+	Answers map[string]string   `json:"answers"`
+	Agent   *AgentProposalDTO   `json:"agent"`
+	Change  *ChangeProposalDTO  `json:"change"`
+	Message *MessageProposalDTO `json:"message"`
 }
 
 // ChatRefDTO names a WhatsApp chat.
@@ -170,4 +172,15 @@ type ChangeProposalDTO struct {
 	Knowledge       []FileDTO          `json:"knowledge"`
 	Settings        []SettingChangeDTO `json:"settings"`
 	Commit          string             `json:"commit"` // set once applied
+}
+
+// MessageProposalDTO is a WhatsApp message Claude drafted; it is sent only when the person clicks Send.
+type MessageProposalDTO struct {
+	ChatJID   string `json:"chatJid"`
+	ChatName  string `json:"chatName"`
+	AgentID   string `json:"agentId"` // "" = sent as the person, with no agent prefix
+	AgentName string `json:"agentName"`
+	Prefix    string `json:"prefix"` // the agent's prefix, added when sent
+	Text      string `json:"text"`
+	Reason    string `json:"reason"`
 }

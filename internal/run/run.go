@@ -17,12 +17,15 @@ import (
 	"github.com/GabiHert/deputy/internal/claude"
 	"github.com/GabiHert/deputy/internal/domain"
 	"github.com/GabiHert/deputy/internal/engine"
+	"github.com/GabiHert/deputy/internal/mcpserver"
 	"github.com/GabiHert/deputy/internal/media"
+	"github.com/GabiHert/deputy/internal/mediacapture"
 	"github.com/GabiHert/deputy/internal/menubar"
 	"github.com/GabiHert/deputy/internal/paths"
 	"github.com/GabiHert/deputy/internal/speech"
 	"github.com/GabiHert/deputy/internal/store"
 	"github.com/GabiHert/deputy/internal/system"
+	"github.com/GabiHert/deputy/internal/update"
 	"github.com/GabiHert/deputy/internal/whatsapp"
 	"github.com/google/uuid"
 	wailsv2 "github.com/wailsapp/wails/v2"
@@ -92,8 +95,18 @@ func Run(assets embed.FS) error {
 	runner := claude.Runner{EnvFn: env}
 	item := menubar.New()
 
+	var notify func(title, body string)
+	upd := update.New(update.Deps{Version: Version, AppName: "Deputy", Repo: "GabiHert/deputy", Env: gitEnv,
+		Emit: emit, Dir: paths.UpdateDir(), LogPath: paths.UpdateLogPath(),
+		Notify: func(title, body string) { notify(title, body) }, Quit: func() {
+			if c := getCtx(); c != nil {
+				wruntime.Quit(c)
+			}
+		}})
+	upd.CleanLeftovers()
+
 	var be *backend.Backend
-	notify := func(title, body string) {
+	notify = func(title, body string) {
 		c := getCtx()
 		if c == nil || !st.Settings().Notify {
 			return
@@ -118,9 +131,49 @@ func Run(assets embed.FS) error {
 		},
 		OnChats: func() { emit(app.EventChats, nil) },
 		Notify:  notify,
+		OnMessage: func(m domain.Message, change string) {
+			if be != nil {
+				be.OnMessage(m, change)
+			}
+		},
+		OnUnread: func(chat string) {
+			if be != nil {
+				be.OnUnread(chat)
+			}
+		},
+		OnReceipt: func(chat string, ids []string, status string) {
+			if be != nil {
+				be.OnReceipt(chat, ids, status)
+			}
+		},
+		OnHistory: func(kind string, added map[string]int) {
+			if be != nil {
+				be.OnHistory(kind, added)
+			}
+		},
 	})
 	be = backend.New(backend.Deps{Store: st, WA: wa, Engine: eng, Media: mediaStore, Models: models, Runner: runner,
-		Env: gitEnv, Emit: emit, Version: Version, Login: system.LoginItem{}})
+		Env: gitEnv, Emit: emit, Version: Version, Login: system.LoginItem{},
+		Update:  upd,
+		Focused: menubar.Focused,
+		NotifyChat: func(chat, title, subtitle, body string) {
+			c := getCtx()
+			if c == nil {
+				return
+			}
+			// One notification per chat: a new message replaces the chat's previous one.
+			if err := wruntime.SendNotification(c, wruntime.NotificationOptions{ID: "chat:" + chat, Title: title, Subtitle: subtitle,
+				Body: body, Data: map[string]interface{}{"chat": chat}}); err != nil {
+				log.Printf("notify: %v", err)
+			}
+		},
+		ClearNotification: func(id string) {
+			if c := getCtx(); c != nil {
+				_ = wruntime.RemoveDeliveredNotification(c, id)
+			}
+		},
+		OnUnreadTotal: item.SetUnread,
+	})
 
 	qe := be.QueryEngine()
 	asst, err := assistant.New(assistant.Deps{
@@ -131,25 +184,41 @@ func Run(assets embed.FS) error {
 		return err
 	}
 	be.SetV2(asst, qe)
+	mcpSrv := mcpserver.New(be, mcpserver.Options{Home: paths.Home(), DefaultRepoPath: backend.DefaultRepoPath})
+	be.SetMCP(mcpSrv)
 	scheduleCtx, stopSchedule := context.WithCancel(context.Background())
 	go be.RunBoardSchedule(scheduleCtx)
+	// Check for a new release a minute after launch, then every six hours.
+	go upd.Watch(scheduleCtx, time.Minute, 6*time.Hour)
 
 	wa.OnState(func(whatsapp.State) { be.EmitStatus() })
+	wa.SetTimerSource(func(chat string) (whatsapp.Timer, bool) {
+		c, err := st.Chat(chat)
+		if err != nil || !c.DisappearingKnown {
+			return whatsapp.Timer{}, false
+		}
+		t := whatsapp.Timer{Known: true, Seconds: uint32(max(c.Disappearing, 0))}
+		if !c.DisappearingAt.IsZero() {
+			t.SetAt = c.DisappearingAt.Unix()
+		}
+		return t, true
+	})
 	wa.OnMessage(eng.HandleIncoming)
+	wa.OnUpdate(be.HandleWAUpdate)
 	wa.OnGroups(func(gs []whatsapp.Group) {
 		for _, g := range gs {
-			c, err := st.Chat(g.JID)
-			if err != nil {
-				c = domain.Chat{JID: g.JID, IsGroup: true}
-			}
-			c.Name, c.Members, c.IsGroup = g.Name, g.Members, true
-			_ = st.SaveChat(c)
+			_, _ = st.UpdateChat(g.JID, func(c *domain.Chat) {
+				c.JID, c.Name, c.Members, c.IsGroup = g.JID, g.Name, g.Members, true
+			})
 		}
 		emit(app.EventChats, nil)
 	})
 
 	bound, setCtx := app.New(be, func(ctx context.Context, title string) (string, error) {
 		return wruntime.OpenDirectoryDialog(ctx, wruntime.OpenDialogOptions{Title: title, CanCreateDirectories: true})
+	})
+	app.SetFilePicker(bound, func(ctx context.Context, title string) ([]string, error) {
+		return wruntime.OpenMultipleFilesDialog(ctx, wruntime.OpenDialogOptions{Title: title})
 	})
 
 	go func() {
@@ -160,6 +229,7 @@ func Run(assets embed.FS) error {
 		}
 	}()
 
+	mediacapture.Allow()
 	return wailsv2.Run(&options.App{
 		Title:             "Deputy",
 		Width:             1280,
@@ -187,6 +257,15 @@ func Run(assets embed.FS) error {
 			setCtx(ctx)
 			if err := wruntime.InitializeNotifications(ctx); err == nil {
 				go func() { _, _ = wruntime.RequestNotificationAuthorization(ctx) }()
+				wruntime.OnNotificationResponse(ctx, func(r wruntime.NotificationResult) {
+					if r.Error != nil {
+						return
+					}
+					if chat, ok := r.Response.UserInfo["chat"].(string); ok && chat != "" {
+						show()
+						emit(app.EventOpenChat, chat)
+					}
+				})
 			} else {
 				log.Printf("notifications: %v", err)
 			}
@@ -194,8 +273,10 @@ func Run(assets embed.FS) error {
 				Activity: func() { show(); emit(app.EventNavigate, "activity") },
 				Open:     show,
 				Quit:     func() { wruntime.Quit(ctx) },
+				Inbox:    func() { show(); emit(app.EventNavigate, "inbox") },
 			})
 			item.SetWaiting(be.Status().Waiting)
+			item.SetUnread(be.GetUnreadTotal())
 			go func() {
 				if err := wa.Start(); err != nil {
 					log.Printf("whatsapp: %v", err)
@@ -204,6 +285,7 @@ func Run(assets embed.FS) error {
 		},
 		OnShutdown: func(ctx context.Context) {
 			stopSchedule()
+			_ = mcpSrv.SetEnabled(false)
 			asst.Close()
 			wa.Stop()
 			eng.Close()

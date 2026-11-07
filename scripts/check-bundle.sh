@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bundle check: the built Deputy.app carries its helper and speech libraries and is signed ad hoc or with Deputy Local Signing.
+# Bundle check: the built Deputy.app carries its helper and speech libraries and is signed ad hoc, with Deputy Local Signing or with a Developer ID.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -30,7 +30,7 @@ id="$(plutil -extract CFBundleIdentifier raw "$C/Info.plist" 2>/dev/null)"
 [ "$id" = "tech.bhlabs.deputy" ] || fail "CFBundleIdentifier is '$id'"
 
 
-# kind_of <path>: adhoc, local (Deputy Local Signing) or other.
+# kind_of <path>: adhoc, local (Deputy Local Signing), team (a Developer ID) or other.
 kind_of() {
   local info
   info="$(codesign -dv --verbose=2 "$1" 2>&1)"
@@ -38,18 +38,20 @@ kind_of() {
     echo adhoc
   elif grep -qx 'Authority=Deputy Local Signing' <<<"$info"; then
     echo local
+  elif grep -q '^Authority=Developer ID Application: ' <<<"$info" && grep -q '^TeamIdentifier=[A-Z0-9]' <<<"$info"; then
+    echo "team:$(sed -n 's/^TeamIdentifier=//p' <<<"$info")"
   else
     echo other
   fi
 }
 want="$(kind_of "$APP")"
-[ "$want" != other ] || fail "Deputy.app is signed neither ad hoc nor with Deputy Local Signing"
+[ "$want" != other ] || fail "Deputy.app is signed neither ad hoc, with Deputy Local Signing nor with a Developer ID"
 for f in "$C"/Frameworks/*.dylib; do
   [ -e "$f" ] || continue
   [ "$(kind_of "$f")" = "$want" ] || fail "${f#"$C/"} is signed differently from Deputy.app"
 done
-if [ "$want" = adhoc ]; then
-  echo "check-bundle: OK (signed ad hoc)"
-else
-  echo "check-bundle: OK (signed with Deputy Local Signing)"
-fi
+case "$want" in
+  adhoc) echo "check-bundle: OK (signed ad hoc)" ;;
+  local) echo "check-bundle: OK (signed with Deputy Local Signing)" ;;
+  *) echo "check-bundle: OK (signed with Developer ID, team ${want#team:})" ;;
+esac

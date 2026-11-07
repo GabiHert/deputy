@@ -3,5 +3,7 @@
 
 void DeputyMenuBarInstall(void);
 void DeputyMenuBarSetWaiting(int waiting);
+void DeputyMenuBarSetUnread(int unread);
+int DeputyAppFocused(void);
 
 #endif

@@ -1,4 +1,4 @@
-import { bytes, clock, duration, initials, plural, secondsLeft, when } from "./format";
+import { ago, bytes, clock, duration, initials, plural, secondsLeft, when } from "./format";
 
 describe("format", () => {
   const now = new Date(2026, 10, 4, 15, 0, 0).getTime();
@@ -12,6 +12,15 @@ describe("format", () => {
     expect(when(new Date(2026, 10, 3, 23, 59).getTime(), now)).toBe("Yesterday");
     expect(when(new Date(2026, 9, 1, 12, 0).getTime(), now)).toBe("1 Oct");
     expect(when(0, now)).toBe("");
+  });
+
+  it("says how long ago a commit was", () => {
+    expect(ago(now - 20_000, now)).toBe("just now");
+    expect(ago(now - 5 * 60_000, now)).toBe("5 minutes ago");
+    expect(ago(now - 60 * 60_000, now)).toBe("1 hour ago");
+    expect(ago(now - 3 * 86_400_000, now)).toBe("3 days ago");
+    expect(ago(new Date(2026, 0, 2).getTime(), now)).toBe("2 Jan 2026");
+    expect(ago(0, now)).toBe("");
   });
 
   it("formats sizes, durations and counts", () => {

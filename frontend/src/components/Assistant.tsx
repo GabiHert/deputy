@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { clearQuotes, formatQuotes, quotesLabel, removeQuote, useAskContext } from "../lib/askContext";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+} from "react";
 import {
   api,
   api2,
@@ -8,6 +16,7 @@ import {
   type AssistantChat,
   type AssistantMessage,
   type ChangeProposal,
+  type MessageProposal,
   type Form,
 } from "../api";
 import { compactDiff, lineDiff } from "../lib/diff";
@@ -29,7 +38,17 @@ export const TRIGGER_LABEL: Record<string, string> = {
 /* ---------- rename ---------- */
 
 /** RenameInput edits a title in place: Enter or blur saves, Escape cancels. */
-export function RenameInput({ id, value, onDone, className }: { id: string; value: string; onDone: (v: string | null) => void; className?: string }) {
+export function RenameInput({
+  id,
+  value,
+  onDone,
+  className,
+}: {
+  id: string;
+  value: string;
+  onDone: (v: string | null) => void;
+  className?: string;
+}) {
   const [v, setV] = useState(value);
   const done = useRef(false);
   const finish = (out: string | null) => {
@@ -85,6 +104,7 @@ export function Conversation({
 }) {
   const chatId = chat?.id ?? "";
   const [msgs] = useChatMessages(chatId);
+  const quotes = useAskContext(chatId);
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
@@ -101,8 +121,9 @@ export function Conversation({
     setErr("");
     try {
       const id = chatId || (await ensureChat!());
-      await api2.send(id, body);
+      await api2.send(id, quotes ? `${formatQuotes(quotes)}\n\n${body}` : body);
       setText("");
+      clearQuotes(id);
     } catch (e) {
       setErr(errText(e));
     }
@@ -120,14 +141,27 @@ export function Conversation({
     <div className={wide ? "convo convo--wide" : "convo"}>
       <div className="convo__list" ref={listRef} aria-live="polite">
         {intro}
-        {msgs.map((m) => (
-          <MessageItem key={m.id} m={m} onOpenAgent={onOpenAgent} onAgentCreated={onAgentCreated} />
-        ))}
+        {groupProgress(msgs).map((g) =>
+          g.kind === "steps" ? (
+            <Steps key={g.items[0].id} items={g.items} />
+          ) : (
+            <MessageItem
+              key={g.m.id}
+              m={g.m}
+              onOpenAgent={onOpenAgent}
+              onAgentCreated={onAgentCreated}
+            />
+          ),
+        )}
         {busy && (
           <div className="convo__busy">
             <span className="spinner" aria-hidden="true" />
             Claude is working…
-            <button type="button" className="btn btn--sm" onClick={() => api2.stop(chatId)}>
+            <button
+              type="button"
+              className="btn btn--sm"
+              onClick={() => api2.stop(chatId)}
+            >
               Stop
             </button>
           </div>
@@ -154,6 +188,28 @@ export function Conversation({
             {err}
           </span>
         )}
+        {quotes && (
+          <div className="quotes" aria-label="Attached messages">
+            {quotes.quotes.length > 1 ? (
+              <span className="quotes__chip">
+                <Icon name="chats" size={13} />
+                <span className="ellipsis">{quotesLabel(quotes)}</span>
+                <button type="button" className="quotes__x" aria-label="Remove the attached messages" onClick={() => clearQuotes(chatId)}>
+                  <Icon name="close" size={12} strokeWidth={2} />
+                </button>
+              </span>
+            ) : (
+              <span className="quotes__chip">
+                <Icon name="chats" size={13} />
+                <span className="ellipsis">{quotesLabel(quotes)}</span>
+                <button type="button" className="quotes__x" aria-label="Remove the attached message" onClick={() => removeQuote(chatId, 0)}>
+                  <Icon name="close" size={12} strokeWidth={2} />
+                </button>
+              </span>
+            )}
+            <span className="muted xsmall">Sent with your next message</span>
+          </div>
+        )}
         <div className="composer">
           <SrLabel htmlFor={`composer-${chatId}`}>Message Claude</SrLabel>
           <textarea
@@ -166,7 +222,13 @@ export function Conversation({
             onKeyDown={onKey}
             disabled={!chatId && !ensureChat}
           />
-          <button type="button" className="composer__send" aria-label="Send to Claude" disabled={busy || !text.trim() || (!chatId && !ensureChat)} onClick={() => send(text)}>
+          <button
+            type="button"
+            className="composer__send"
+            aria-label="Send to Claude"
+            disabled={busy || !text.trim() || (!chatId && !ensureChat)}
+            onClick={() => send(text)}
+          >
             <Icon name="send" size={16} strokeWidth={2} />
           </button>
         </div>
@@ -175,7 +237,71 @@ export function Conversation({
   );
 }
 
-function MessageItem({ m, onOpenAgent, onAgentCreated }: { m: AssistantMessage; onOpenAgent?: (id: string) => void; onAgentCreated?: (id: string) => void }) {
+type Group =
+  | { kind: "steps"; items: AssistantMessage[] }
+  | { kind: "one"; m: AssistantMessage };
+
+/** groupProgress folds runs of two or more progress lines into one step group. */
+function groupProgress(msgs: AssistantMessage[]): Group[] {
+  const out: Group[] = [];
+  for (const m of msgs) {
+    const last = out[out.length - 1];
+    if (m.role === "progress" && last?.kind === "steps") last.items.push(m);
+    else if (m.role === "progress") out.push({ kind: "steps", items: [m] });
+    else out.push({ kind: "one", m });
+  }
+  return out.map((g) =>
+    g.kind === "steps" && g.items.length === 1
+      ? { kind: "one", m: g.items[0] }
+      : g,
+  );
+}
+
+/** Steps shows a run of tool progress as one line, with the full list on demand. */
+function Steps({ items }: { items: AssistantMessage[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="steps">
+      <button
+        type="button"
+        className="progress-line steps__toggle"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+      >
+        <Icon name="check" size={14} strokeWidth={2} />
+        {items[items.length - 1].text} · {items.length} steps
+        <span
+          className={
+            open ? "proposal__chev proposal__chev--up" : "proposal__chev"
+          }
+          aria-hidden="true"
+        >
+          <Icon name="chevron" size={14} strokeWidth={2} />
+        </span>
+      </button>
+      {open && (
+        <div className="steps__list">
+          {items.map((m) => (
+            <div key={m.id} className="progress-line">
+              <Icon name="check" size={14} strokeWidth={2} />
+              {m.text}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MessageItem({
+  m,
+  onOpenAgent,
+  onAgentCreated,
+}: {
+  m: AssistantMessage;
+  onOpenAgent?: (id: string) => void;
+  onAgentCreated?: (id: string) => void;
+}) {
   switch (m.role) {
     case "user":
       return <div className="bubble">{m.text}</div>;
@@ -203,9 +329,21 @@ function MessageItem({ m, onOpenAgent, onAgentCreated }: { m: AssistantMessage; 
       );
     case "card":
       if (!m.card) return null;
-      if (m.card.kind === "ask" && m.card.ask) return <AskCard m={m} form={m.card.ask} />;
-      if (m.card.kind === "agent" && m.card.agent) return <AgentCard m={m} p={m.card.agent} onOpenAgent={onOpenAgent} onCreated={onAgentCreated} />;
-      if (m.card.kind === "change" && m.card.change) return <ChangeCard m={m} c={m.card.change} onOpenAgent={onOpenAgent} />;
+      if (m.card.kind === "ask" && m.card.ask)
+        return <AskCard m={m} form={m.card.ask} />;
+      if (m.card.kind === "agent" && m.card.agent)
+        return (
+          <AgentCard
+            m={m}
+            p={m.card.agent}
+            onOpenAgent={onOpenAgent}
+            onCreated={onAgentCreated}
+          />
+        );
+      if (m.card.kind === "message" && m.card.message)
+        return <MessageCard m={m} p={m.card.message} />;
+      if (m.card.kind === "change" && m.card.change)
+        return <ChangeCard m={m} c={m.card.change} onOpenAgent={onOpenAgent} />;
       return null;
   }
   return m.text ? <div className="say">{m.text}</div> : null;
@@ -239,7 +377,14 @@ export function FormFields({
               <label htmlFor={qid} className="field__label">
                 {q.label}
               </label>
-              <input id={qid} className="input" value={val} placeholder={q.placeholder} disabled={disabled} onChange={(e) => setAnswer(q.id, e.target.value)} />
+              <input
+                id={qid}
+                className="input"
+                value={val}
+                placeholder={q.placeholder}
+                disabled={disabled}
+                onChange={(e) => setAnswer(q.id, e.target.value)}
+              />
             </div>
           );
         }
@@ -255,7 +400,15 @@ export function FormFields({
                     type="checkbox"
                     disabled={disabled}
                     checked={picked.includes(o)}
-                    onChange={(e) => setAnswer(q.id, (e.target.checked ? [...picked, o] : picked.filter((x) => x !== o)).join("\n"))}
+                    onChange={(e) =>
+                      setAnswer(
+                        q.id,
+                        (e.target.checked
+                          ? [...picked, o]
+                          : picked.filter((x) => x !== o)
+                        ).join("\n"),
+                      )
+                    }
                   />
                   <span className="check__title">{o}</span>
                 </label>
@@ -263,7 +416,8 @@ export function FormFields({
             </fieldset>
           );
         }
-        const choices = q.kind === "confirm" ? (opts.length ? opts : ["Yes", "No"]) : opts;
+        const choices =
+          q.kind === "confirm" ? (opts.length ? opts : ["Yes", "No"]) : opts;
         return (
           <fieldset key={q.id} className="ask__q">
             <legend className="ask__legend">{q.label}</legend>
@@ -291,9 +445,25 @@ export function FormFields({
 function AskCard({ m, form }: { m: AssistantMessage; form: Form }) {
   const card = m.card!;
   const open = card.status === "open";
-  const [answers, setAnswers] = useState<Record<string, string>>(card.answers ?? {});
+  const [answers, setAnswers] = useState<Record<string, string>>(
+    card.answers ?? {},
+  );
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [shown, setShown] = useState(open);
+  useEffect(() => {
+    if (!open) setShown(false);
+  }, [open]);
+  const summary =
+    card.status === "dismissed"
+      ? "Skipped, Claude chose"
+      : (form.questions ?? [])
+          .map((q) => (card.answers ?? answers)[q.id])
+          .filter(Boolean)
+          .map((v) => v.split("\n").join(", "))
+          .join(" · ") ||
+        card.result ||
+        "Answered";
   const act = async (fn: () => Promise<void>) => {
     setBusy(true);
     setErr("");
@@ -306,24 +476,72 @@ function AskCard({ m, form }: { m: AssistantMessage; form: Form }) {
     }
   };
   return (
-    <form className="ask" aria-label={form.title || "Claude is asking"} onSubmit={(e) => e.preventDefault()}>
-      <div className="ask__head">{form.title || "Claude is asking"}</div>
-      <div className="ask__body">
-        <FormFields form={form} idPrefix={m.id} answers={answers} setAnswer={(id, v) => setAnswers((a) => ({ ...a, [id]: v }))} disabled={!open || busy} />
-        {open ? (
-          <div className="row">
-            <button type="button" className="btn btn--primary" disabled={busy} onClick={() => act(() => api2.answerCard(m.id, answers))}>
-              Answer
-            </button>
-            <button type="button" className="btn" disabled={busy} onClick={() => act(() => api2.answerCard(m.id, {}))}>
-              Skip, you choose
-            </button>
-          </div>
-        ) : (
-          <span className="muted small">{card.status === "dismissed" ? "Skipped." : card.result || "Answered."}</span>
-        )}
-        {err && <span className="error-text">{err}</span>}
-      </div>
+    <form
+      className={shown ? "ask" : "ask ask--folded"}
+      aria-label={form.title || "Claude is asking"}
+      onSubmit={(e) => e.preventDefault()}
+    >
+      <button
+        type="button"
+        className="ask__head ask__toggle"
+        aria-expanded={shown}
+        onClick={() => setShown(!shown)}
+      >
+        <span className="ask__title">
+          {form.title || "Claude is asking"}
+          {!shown && (
+            <span className="ask__summary">
+              {open ? "Waiting for your answer" : summary}
+            </span>
+          )}
+        </span>
+        <span
+          className={
+            shown ? "proposal__chev proposal__chev--up" : "proposal__chev"
+          }
+          aria-hidden="true"
+        >
+          <Icon name="chevron" size={16} strokeWidth={2} />
+        </span>
+      </button>
+      {shown && (
+        <div className="ask__body">
+          <FormFields
+            form={form}
+            idPrefix={m.id}
+            answers={answers}
+            setAnswer={(id, v) => setAnswers((a) => ({ ...a, [id]: v }))}
+            disabled={!open || busy}
+          />
+          {open ? (
+            <div className="row">
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={busy}
+                onClick={() => act(() => api2.answerCard(m.id, answers))}
+              >
+                Answer
+              </button>
+              <button
+                type="button"
+                className="btn"
+                disabled={busy}
+                onClick={() => act(() => api2.answerCard(m.id, {}))}
+              >
+                Skip, you choose
+              </button>
+            </div>
+          ) : (
+            <span className="muted small">
+              {card.status === "dismissed"
+                ? "Skipped."
+                : card.result || "Answered."}
+            </span>
+          )}
+          {err && <span className="error-text">{err}</span>}
+        </div>
+      )}
     </form>
   );
 }
@@ -347,13 +565,21 @@ function AgentCard({
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [details, setDetails] = useState(false);
+  const [fullText, setFullText] = useState(false);
   useEffect(() => {
     if (!editing) setP(proposal);
   }, [proposal, editing]);
-  const set = <K extends keyof AgentProposal>(k: K, v: AgentProposal[K]) => setP((x) => ({ ...x, [k]: v }));
+  const set = <K extends keyof AgentProposal>(k: K, v: AgentProposal[K]) =>
+    setP((x) => ({ ...x, [k]: v }));
   const chats = p.chats ?? [];
   const files = p.knowledge ?? [];
-  const media = [p.readImages && "Reads photos", p.transcribeVoice && "transcribes voice notes", p.voiceReplies ? "answers with voice notes" : "answers in text", p.sendImages && "sends images"]
+  const media = [
+    p.readImages && "Reads photos",
+    p.transcribeVoice && "transcribes voice notes",
+    p.voiceReplies ? "answers with voice notes" : "answers in text",
+    p.sendImages && "sends images",
+  ]
     .filter(Boolean)
     .join(" · ");
 
@@ -380,149 +606,297 @@ function AgentCard({
   };
 
   const created = card.status === "done";
+  const folded = !open && !details;
+  const chatList =
+    chats.length === 0 ? "No chats yet" : chats.map((c) => c.name).join(", ");
   return (
-    <section className="proposal" aria-label={`Proposed agent ${p.name}`}>
-      <div className="proposal__head">
-        <div className="row row--center">
-          <span className="agent-mark" aria-hidden="true">
-            {(p.name || "?").slice(0, 1).toUpperCase()}
-          </span>
-          <div>
-            {editing ? (
-              <>
-                <SrLabel htmlFor={`${m.id}-name`}>Agent name</SrLabel>
-                <input id={`${m.id}-name`} className="input" value={p.name} onChange={(e) => set("name", e.target.value)} />
-              </>
-            ) : (
-              <h2 className="proposal__name">{p.name || "Untitled agent"}</h2>
-            )}
-            <div className="muted xsmall">New agent · proposed by Claude</div>
+    <section
+      className={folded ? "proposal proposal--folded" : "proposal"}
+      aria-label={`Proposed agent ${p.name}`}
+    >
+      <div
+        className={
+          open ? "proposal__head" : "proposal__head proposal__head--toggle"
+        }
+        {...(open
+          ? {}
+          : {
+              role: "button",
+              tabIndex: 0,
+              "aria-expanded": details,
+              title: details ? "Collapse" : "Expand",
+              onClick: () => setDetails(!details),
+              onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setDetails(!details);
+                }
+              },
+            })}
+      >
+        <span className="agent-mark" aria-hidden="true">
+          {(p.name || "?").slice(0, 1).toUpperCase()}
+        </span>
+        <div className="proposal__title">
+          {editing ? (
+            <>
+              <SrLabel htmlFor={`${m.id}-name`}>Agent name</SrLabel>
+              <input
+                id={`${m.id}-name`}
+                className="input"
+                value={p.name}
+                onChange={(e) => set("name", e.target.value)}
+              />
+            </>
+          ) : (
+            <h2 className="proposal__name">{p.name || "Untitled agent"}</h2>
+          )}
+          <div className="muted xsmall proposal__sub">
+            {folded
+              ? `${chatList} · ${MODE_LABEL[p.mode] ?? p.mode}`
+              : "New agent · proposed by Claude"}
           </div>
         </div>
-        {created ? <Pill tone="ok">Created</Pill> : card.status === "dismissed" ? <Pill>Dismissed</Pill> : <Pill tone="warn">Not created yet</Pill>}
-      </div>
-
-      <dl className="proposal__rows">
-        <dt>Chat{chats.length === 1 ? "" : "s"}</dt>
-        <dd>
-          {chats.length === 0
-            ? "None yet"
-            : chats.map((c) => `${c.name}${c.isGroup ? ` (group${c.members ? `, ${c.members} people` : ""})` : ""}`).join(", ")}
-        </dd>
-        <dt>Answers</dt>
-        <dd>
-          {editing ? (
-            <select aria-label="When it answers" className="select" value={p.trigger} onChange={(e) => set("trigger", e.target.value)}>
-              <option value="all">{TRIGGER_LABEL.all}</option>
-              <option value="mention">{TRIGGER_LABEL.mention}</option>
-            </select>
-          ) : (
-            TRIGGER_LABEL[p.trigger] ?? p.trigger
-          )}
-        </dd>
-        <dt>Replies</dt>
-        <dd>
-          {editing ? (
-            <select aria-label="Replies" className="select" value={p.mode} onChange={(e) => set("mode", e.target.value)}>
-              <option value="approve">{MODE_LABEL.approve}</option>
-              <option value="auto">{MODE_LABEL.auto}</option>
-              <option value="never">{MODE_LABEL.never}</option>
-            </select>
-          ) : (
-            <>
-              {MODE_LABEL[p.mode] ?? p.mode}
-              {p.maxPerHour ? ` · up to ${p.maxPerHour} an hour` : ""}
-            </>
-          )}
-        </dd>
-        <dt>Media</dt>
-        <dd>
-          {editing ? (
-            <div className="proposal__checks">
-              <label className="check" htmlFor={`${m.id}-ri`}>
-                <input id={`${m.id}-ri`} type="checkbox" checked={p.readImages} onChange={(e) => set("readImages", e.target.checked)} />
-                <span className="check__title">Read photos</span>
-              </label>
-              <label className="check" htmlFor={`${m.id}-tv`}>
-                <input id={`${m.id}-tv`} type="checkbox" checked={p.transcribeVoice} onChange={(e) => set("transcribeVoice", e.target.checked)} />
-                <span className="check__title">Transcribe voice notes</span>
-              </label>
-              <label className="check" htmlFor={`${m.id}-vr`}>
-                <input id={`${m.id}-vr`} type="checkbox" checked={p.voiceReplies} onChange={(e) => set("voiceReplies", e.target.checked)} />
-                <span className="check__title">Answer voice notes with voice</span>
-              </label>
-              <label className="check" htmlFor={`${m.id}-si`}>
-                <input id={`${m.id}-si`} type="checkbox" checked={p.sendImages} onChange={(e) => set("sendImages", e.target.checked)} />
-                <span className="check__title">Send images</span>
-              </label>
-            </div>
-          ) : (
-            media
-          )}
-        </dd>
-        <dt>Repo</dt>
-        <dd className="mono small">
-          {editing ? (
-            <div className="row row--nowrap">
-              <SrLabel htmlFor={`${m.id}-repo`}>Repo folder</SrLabel>
-              <input id={`${m.id}-repo`} className="input input--mono grow" value={p.repoPath} onChange={(e) => set("repoPath", e.target.value)} />
-              <button type="button" className="btn btn--sm" onClick={choose}>
-                Choose…
-              </button>
-            </div>
-          ) : (
-            p.repoPath || "Chosen by Deputy"
-          )}
-        </dd>
-      </dl>
-
-      <div className="proposal__section">
-        <h3 className="proposal__h">
-          How it behaves <span className="mono muted xsmall">INSTRUCTIONS.md</span>
-        </h3>
-        {editing ? (
-          <>
-            <SrLabel htmlFor={`${m.id}-ins`}>Instructions</SrLabel>
-            <textarea id={`${m.id}-ins`} className="input input--prose" rows={10} value={p.instructions} onChange={(e) => set("instructions", e.target.value)} />
-          </>
+        {created ? (
+          <Pill tone="ok">Created</Pill>
+        ) : card.status === "dismissed" ? (
+          <Pill>Dismissed</Pill>
         ) : (
-          <Markdown text={p.instructions} className="instructions" />
+          <Pill tone="warn">Not created yet</Pill>
+        )}
+        {!open && (
+          <span
+            className={
+              details ? "proposal__chev proposal__chev--up" : "proposal__chev"
+            }
+            aria-hidden="true"
+          >
+            <Icon name="chevron" size={16} strokeWidth={2} />
+          </span>
         )}
       </div>
 
-      {files.length > 0 && (
-        <div className="proposal__section">
-          <h3 className="proposal__h">It starts out knowing</h3>
-          <ul className="filelist">
-            {files.map((f) => (
-              <li key={f.path}>
-                <span className="mono">{f.path}</span>
-                <span className="fg2">{f.summary}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {!folded && (
+        <>
+          <dl className="proposal__rows">
+            <dt>Chat{chats.length === 1 ? "" : "s"}</dt>
+            <dd>
+              {chats.length === 0
+                ? "None yet"
+                : chats
+                    .map(
+                      (c) =>
+                        `${c.name}${c.isGroup ? ` (group${c.members ? `, ${c.members} people` : ""})` : ""}`,
+                    )
+                    .join(", ")}
+            </dd>
+            <dt>Answers</dt>
+            <dd>
+              {editing ? (
+                <select
+                  aria-label="When it answers"
+                  className="select"
+                  value={p.trigger}
+                  onChange={(e) => set("trigger", e.target.value)}
+                >
+                  <option value="all">{TRIGGER_LABEL.all}</option>
+                  <option value="mention">{TRIGGER_LABEL.mention}</option>
+                </select>
+              ) : (
+                (TRIGGER_LABEL[p.trigger] ?? p.trigger)
+              )}
+            </dd>
+            <dt>Replies</dt>
+            <dd>
+              {editing ? (
+                <select
+                  aria-label="Replies"
+                  className="select"
+                  value={p.mode}
+                  onChange={(e) => set("mode", e.target.value)}
+                >
+                  <option value="approve">{MODE_LABEL.approve}</option>
+                  <option value="auto">{MODE_LABEL.auto}</option>
+                  <option value="never">{MODE_LABEL.never}</option>
+                </select>
+              ) : (
+                <>
+                  {MODE_LABEL[p.mode] ?? p.mode}
+                  {p.maxPerHour ? ` · up to ${p.maxPerHour} an hour` : ""}
+                </>
+              )}
+            </dd>
+            <dt>Media</dt>
+            <dd>
+              {editing ? (
+                <div className="proposal__checks">
+                  <label className="check" htmlFor={`${m.id}-ri`}>
+                    <input
+                      id={`${m.id}-ri`}
+                      type="checkbox"
+                      checked={p.readImages}
+                      onChange={(e) => set("readImages", e.target.checked)}
+                    />
+                    <span className="check__title">Read photos</span>
+                  </label>
+                  <label className="check" htmlFor={`${m.id}-tv`}>
+                    <input
+                      id={`${m.id}-tv`}
+                      type="checkbox"
+                      checked={p.transcribeVoice}
+                      onChange={(e) => set("transcribeVoice", e.target.checked)}
+                    />
+                    <span className="check__title">Transcribe voice notes</span>
+                  </label>
+                  <label className="check" htmlFor={`${m.id}-vr`}>
+                    <input
+                      id={`${m.id}-vr`}
+                      type="checkbox"
+                      checked={p.voiceReplies}
+                      onChange={(e) => set("voiceReplies", e.target.checked)}
+                    />
+                    <span className="check__title">
+                      Answer voice notes with voice
+                    </span>
+                  </label>
+                  <label className="check" htmlFor={`${m.id}-si`}>
+                    <input
+                      id={`${m.id}-si`}
+                      type="checkbox"
+                      checked={p.sendImages}
+                      onChange={(e) => set("sendImages", e.target.checked)}
+                    />
+                    <span className="check__title">Send images</span>
+                  </label>
+                </div>
+              ) : (
+                media
+              )}
+            </dd>
+            <dt>Repo</dt>
+            <dd className="mono small">
+              {editing ? (
+                <div className="row row--nowrap">
+                  <SrLabel htmlFor={`${m.id}-repo`}>Repo folder</SrLabel>
+                  <input
+                    id={`${m.id}-repo`}
+                    className="input input--mono grow"
+                    value={p.repoPath}
+                    onChange={(e) => set("repoPath", e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn--sm"
+                    onClick={choose}
+                  >
+                    Choose…
+                  </button>
+                </div>
+              ) : (
+                p.repoPath || "Chosen by Deputy"
+              )}
+            </dd>
+          </dl>
+
+          <div className="proposal__section">
+            <h3 className="proposal__h">
+              How it behaves{" "}
+              <span className="mono muted xsmall">INSTRUCTIONS.md</span>
+            </h3>
+            {editing ? (
+              <>
+                <SrLabel htmlFor={`${m.id}-ins`}>Instructions</SrLabel>
+                <textarea
+                  id={`${m.id}-ins`}
+                  className="input input--prose"
+                  rows={10}
+                  value={p.instructions}
+                  onChange={(e) => set("instructions", e.target.value)}
+                />
+              </>
+            ) : (
+              <>
+                <div
+                  className={
+                    fullText || p.instructions.length < 600
+                      ? "instructions-wrap"
+                      : "instructions-wrap instructions-wrap--clip"
+                  }
+                >
+                  <Markdown text={p.instructions} className="instructions" />
+                </div>
+                {p.instructions.length >= 600 && (
+                  <button
+                    type="button"
+                    className="btn btn--quiet btn--sm"
+                    aria-expanded={fullText}
+                    onClick={() => setFullText(!fullText)}
+                  >
+                    {fullText ? "Show less" : "Show all instructions"}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+
+          {files.length > 0 && (
+            <div className="proposal__section">
+              <h3 className="proposal__h">It starts out knowing</h3>
+              <ul className="filelist">
+                {files.map((f) => (
+                  <li key={f.path}>
+                    <span className="mono">{f.path}</span>
+                    <span className="fg2">{f.summary}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </>
       )}
 
       {open && (
         <div className="proposal__foot">
-          <button type="button" className="btn btn--primary" disabled={busy || !p.name.trim()} onClick={create}>
+          <button
+            type="button"
+            className="btn btn--primary"
+            disabled={busy || !p.name.trim()}
+            onClick={create}
+          >
             {busy ? "Creating…" : "Create agent"}
           </button>
-          <button type="button" className="btn" disabled={busy} onClick={() => setEditing(!editing)}>
+          <button
+            type="button"
+            className="btn"
+            disabled={busy}
+            onClick={() => setEditing(!editing)}
+          >
             {editing ? "Done editing" : "Edit before creating"}
           </button>
-          <button type="button" className="btn btn--quiet" disabled={busy} onClick={() => api2.dismissCard(m.id).catch((e) => setErr(errText(e)))}>
+          <button
+            type="button"
+            className="btn btn--quiet"
+            disabled={busy}
+            onClick={() =>
+              api2.dismissCard(m.id).catch((e) => setErr(errText(e)))
+            }
+          >
             Dismiss
           </button>
-          {!editing && <span className="muted small">Or reply below to change it.</span>}
+          {!editing && (
+            <span className="muted small">Or reply below to change it.</span>
+          )}
         </div>
       )}
       {created && (
         <div className="proposal__foot">
           <span className="ok-text small">{card.result || "Created."}</span>
           {p.createdAgentId && onOpenAgent && (
-            <button type="button" className="btn btn--sm" onClick={() => onOpenAgent(p.createdAgentId)}>
+            <button
+              type="button"
+              className="btn btn--sm"
+              onClick={() => onOpenAgent(p.createdAgentId)}
+            >
               Open {p.name}
             </button>
           )}
@@ -539,14 +913,114 @@ function AgentCard({
   );
 }
 
+/* ---------- message to send ---------- */
+
+function MessageCard({ m, p }: { m: AssistantMessage; p: MessageProposal }) {
+  const card = m.card!;
+  const open = card.status === "open";
+  const [text, setText] = useState(p.text);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const act = async (fn: () => Promise<void>) => {
+    setBusy(true);
+    setErr("");
+    try {
+      await fn();
+    } catch (e) {
+      setErr(errText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const from = p.agentName ? `as ${p.agentName}` : "as you";
+  return (
+    <section className="ask sendcard" aria-label={`Message to ${p.chatName}`}>
+      <div className="ask__head">
+        Message to {p.chatName} · {from}
+      </div>
+      <div className="ask__body">
+        {p.reason && <span className="muted small">{p.reason}</span>}
+        {open ? (
+          <>
+            <label htmlFor={`${m.id}-text`} className="field__label">
+              {p.prefix
+                ? `Goes out as “${p.prefix} …”`
+                : "Goes out exactly like this"}
+            </label>
+            <textarea
+              id={`${m.id}-text`}
+              className="input input--prose"
+              rows={Math.min(8, Math.max(3, text.split("\n").length + 1))}
+              value={text}
+              disabled={busy}
+              onChange={(e) => setText(e.target.value)}
+            />
+            <div className="row">
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={busy || !text.trim()}
+                onClick={() => act(() => api2.sendMessageCard(m.id, text))}
+              >
+                {busy ? "Sending…" : "Send"}
+              </button>
+              <button
+                type="button"
+                className="btn btn--quiet"
+                disabled={busy}
+                onClick={() => act(() => api2.dismissCard(m.id))}
+              >
+                Don't send
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="sendcard__text">
+              {p.prefix ? `${p.prefix} ` : ""}
+              {p.text}
+            </div>
+            <span
+              className={
+                card.status === "done" ? "ok-text small" : "muted small"
+              }
+            >
+              {card.status === "done" ? card.result || "Sent." : "Not sent."}
+            </span>
+          </>
+        )}
+        {err && (
+          <span className="error-text" role="alert">
+            {err}
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
+
 /* ---------- change proposal ---------- */
 
-function ChangeCard({ m, c, onOpenAgent }: { m: AssistantMessage; c: ChangeProposal; onOpenAgent?: (id: string) => void }) {
+function ChangeCard({
+  m,
+  c,
+  onOpenAgent,
+}: {
+  m: AssistantMessage;
+  c: ChangeProposal;
+  onOpenAgent?: (id: string) => void;
+}) {
   const card = m.card!;
   const open = card.status === "open";
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const diff = useMemo(() => (c.instructions ? compactDiff(lineDiff(c.oldInstructions ?? "", c.instructions)) : []), [c.instructions, c.oldInstructions]);
+  const diff = useMemo(
+    () =>
+      c.instructions
+        ? compactDiff(lineDiff(c.oldInstructions ?? "", c.instructions))
+        : [],
+    [c.instructions, c.oldInstructions],
+  );
   const act = async (fn: () => Promise<void>) => {
     setBusy(true);
     setErr("");
@@ -559,7 +1033,10 @@ function ChangeCard({ m, c, onOpenAgent }: { m: AssistantMessage; c: ChangePropo
     }
   };
   return (
-    <section className="change" aria-label={`Proposed change to ${c.agentName}`}>
+    <section
+      className="change"
+      aria-label={`Proposed change to ${c.agentName}`}
+    >
       <div className="change__head">Proposed change · {c.agentName}</div>
       <div className="change__body">
         {c.summary && <p className="change__summary">{c.summary}</p>}
@@ -571,8 +1048,26 @@ function ChangeCard({ m, c, onOpenAgent }: { m: AssistantMessage; c: ChangePropo
                   …
                 </div>
               ) : (
-                <div key={i} className={l.op === "+" ? "diff__line diff__line--add" : l.op === "-" ? "diff__line diff__line--del" : "diff__line"}>
-                  <span className="diff__op" aria-label={l.op === "+" ? "added" : l.op === "-" ? "removed" : undefined}>
+                <div
+                  key={i}
+                  className={
+                    l.op === "+"
+                      ? "diff__line diff__line--add"
+                      : l.op === "-"
+                        ? "diff__line diff__line--del"
+                        : "diff__line"
+                  }
+                >
+                  <span
+                    className="diff__op"
+                    aria-label={
+                      l.op === "+"
+                        ? "added"
+                        : l.op === "-"
+                          ? "removed"
+                          : undefined
+                    }
+                  >
                     {l.op}
                   </span>
                   {l.text || " "}
@@ -605,10 +1100,20 @@ function ChangeCard({ m, c, onOpenAgent }: { m: AssistantMessage; c: ChangePropo
         )}
         {open ? (
           <div className="row">
-            <button type="button" className="btn btn--primary btn--sm" disabled={busy} onClick={() => act(() => api2.applyChangeCard(m.id))}>
+            <button
+              type="button"
+              className="btn btn--primary btn--sm"
+              disabled={busy}
+              onClick={() => act(() => api2.applyChangeCard(m.id))}
+            >
               Apply
             </button>
-            <button type="button" className="btn btn--sm" disabled={busy} onClick={() => act(() => api2.dismissCard(m.id))}>
+            <button
+              type="button"
+              className="btn btn--sm"
+              disabled={busy}
+              onClick={() => act(() => api2.dismissCard(m.id))}
+            >
               Not now
             </button>
           </div>
@@ -624,7 +1129,11 @@ function ChangeCard({ m, c, onOpenAgent }: { m: AssistantMessage; c: ChangePropo
               ) : null}
             </span>
             {onOpenAgent && c.agentId && (
-              <button type="button" className="btn btn--quiet btn--sm" onClick={() => onOpenAgent(c.agentId)}>
+              <button
+                type="button"
+                className="btn btn--quiet btn--sm"
+                onClick={() => onOpenAgent(c.agentId)}
+              >
                 Open {c.agentName}
               </button>
             )}
@@ -649,11 +1158,14 @@ export function ChatList({
   setRenamingId,
   onRename,
   onDelete,
+  onCollapse,
 }: {
   chats: AssistantChat[];
   activeId: string;
   onPick: (id: string) => void;
   onNew: () => void;
+  /** hides the list; the chat header then offers to show it again */
+  onCollapse?: () => void;
   renamingId: string;
   setRenamingId: (id: string) => void;
   onRename: (id: string, title: string) => void;
@@ -665,15 +1177,43 @@ export function ChatList({
   return (
     <nav className="chatlist" aria-label="Saved chats">
       <div className="chatlist__top">
-        <button type="button" className="btn btn--primary chatlist__new" onClick={onNew}>
-          <Icon name="plus" size={14} strokeWidth={2} />
-          New chat
-        </button>
+        <div className="chatlist__row">
+          <button
+            type="button"
+            className="btn btn--primary chatlist__new"
+            onClick={onNew}
+          >
+            <Icon name="plus" size={14} strokeWidth={2} />
+            New chat
+          </button>
+          {onCollapse && (
+            <button
+              type="button"
+              className="icon-btn icon-btn--box"
+              aria-label="Hide chat list"
+              title="Hide chat list"
+              onClick={onCollapse}
+            >
+              <Icon name="sidebar" size={16} />
+            </button>
+          )}
+        </div>
         <SrLabel htmlFor="chat-search">Search chats</SrLabel>
-        <input id="chat-search" type="search" className="input input--sm" placeholder="Search chats" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input
+          id="chat-search"
+          type="search"
+          className="input input--sm"
+          placeholder="Search chats"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
       </div>
       <div className="chatlist__items">
-        {groups.length === 0 && <span className="muted xsmall chatlist__empty">{q ? "No chats match." : "No chats yet."}</span>}
+        {groups.length === 0 && (
+          <span className="muted xsmall chatlist__empty">
+            {q ? "No chats match." : "No chats yet."}
+          </span>
+        )}
         {groups.map((g) => (
           <div key={g.label} className="chatlist__group">
             <div className="chatlist__label">{g.label}</div>
@@ -696,7 +1236,11 @@ export function ChatList({
               }
               return (
                 <div key={c.id}>
-                  <div className={on ? "chatlist__row chatlist__row--on" : "chatlist__row"}>
+                  <div
+                    className={
+                      on ? "chatlist__row chatlist__row--on" : "chatlist__row"
+                    }
+                  >
                     <button
                       type="button"
                       className="chatlist__pick"
@@ -706,17 +1250,31 @@ export function ChatList({
                       onDoubleClick={() => setRenamingId(c.id)}
                     >
                       <span className="chatlist__title">
-                        {c.busy && <span className="dot dot--acc" aria-label="Working" />}
+                        {c.busy && (
+                          <span className="dot dot--acc" aria-label="Working" />
+                        )}
                         {c.title || "New chat"}
                       </span>
-                      <span className="chatlist__sub">{c.preview || when(c.updatedAt)}</span>
+                      <span className="chatlist__sub">
+                        {c.preview || when(c.updatedAt)}
+                      </span>
                     </button>
                     {on && (
                       <>
-                        <button type="button" className="icon-btn" aria-label={`Rename ${c.title}`} onClick={() => setRenamingId(c.id)}>
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          aria-label={`Rename ${c.title}`}
+                          onClick={() => setRenamingId(c.id)}
+                        >
                           <Icon name="pencil" size={13} />
                         </button>
-                        <button type="button" className="icon-btn" aria-label={`Delete ${c.title}`} onClick={() => setConfirmId(c.id)}>
+                        <button
+                          type="button"
+                          className="icon-btn"
+                          aria-label={`Delete ${c.title}`}
+                          onClick={() => setConfirmId(c.id)}
+                        >
                           <Icon name="trash" size={13} />
                         </button>
                       </>
@@ -751,17 +1309,26 @@ export function ClaudePanel({
   reloadChats,
   onOpenAgent,
   onNewAgent,
+  onHide,
+  focus,
 }: {
   chats: AssistantChat[];
   reloadChats: () => void;
   onOpenAgent: (id: string) => void;
   onNewAgent: () => void;
+  onHide?: () => void;
+  /** open this chat (n changes on every request) */
+  focus?: { id: string; n: number } | null;
 }) {
   const visible = chats.filter((c) => c.purpose !== "board");
   const [activeId, setActiveId] = useState("");
   const [renamingId, setRenamingId] = useState("");
   const [headRename, setHeadRename] = useState(false);
-  const [listOpen, setListOpen] = useState(true);
+  const [listOpen, setListOpenState] = useState(() => localStorage.getItem("deputy.sessionList") !== "hidden");
+  const setListOpen = (v: boolean) => {
+    localStorage.setItem("deputy.sessionList", v ? "shown" : "hidden");
+    setListOpenState(v);
+  };
   const [err, setErr] = useState("");
   const pendingId = useRef(""); // a chat just created, not in the list yet
 
@@ -769,6 +1336,13 @@ export function ClaudePanel({
     pendingId.current = id;
     setActiveId(id);
   };
+  useEffect(() => {
+    if (focus?.id) {
+      select(focus.id);
+      reloadChats();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus?.n]);
 
   useEffect(() => {
     if (visible.some((c) => c.id === pendingId.current)) pendingId.current = "";
@@ -823,24 +1397,50 @@ export function ClaudePanel({
                 }}
               />
             ) : (
-              <button type="button" className="claude-panel__name" title="Double-click to rename" onDoubleClick={() => active && setHeadRename(true)}>
+              <button
+                type="button"
+                className="claude-panel__name"
+                title="Double-click to rename"
+                onDoubleClick={() => active && setHeadRename(true)}
+              >
                 {active?.title || "New chat"}
               </button>
             )}
           </div>
           <div className="row row--tight">
-            <button type="button" className="icon-btn icon-btn--box" aria-label="Rename chat" disabled={!active} onClick={() => setHeadRename(true)}>
-              <Icon name="pencil" size={15} />
-            </button>
             <button
               type="button"
-              className={listOpen ? "icon-btn icon-btn--box icon-btn--on" : "icon-btn icon-btn--box"}
-              aria-label={listOpen ? "Hide chat list" : "Show chat list"}
-              aria-pressed={listOpen}
-              onClick={() => setListOpen(!listOpen)}
+              className="icon-btn icon-btn--box"
+              aria-label="Rename chat"
+              disabled={!active}
+              onClick={() => setHeadRename(true)}
             >
-              <Icon name="sidebar" size={16} />
+              <Icon name="pencil" size={15} />
             </button>
+            {!listOpen && (
+              <button
+                type="button"
+                className="icon-btn icon-btn--box"
+                aria-label="Show chat list"
+                title="Show chat list"
+                onClick={() => setListOpen(true)}
+              >
+                <Icon name="sidebar" size={16} />
+              </button>
+            )}
+            {onHide && (
+              <button
+                type="button"
+                className="icon-btn icon-btn--box"
+                aria-label="Collapse sessions"
+                title="Collapse sessions"
+                onClick={onHide}
+              >
+                <span className="claude-rail__chev claude-rail__chev--out">
+                  <Icon name="chevron" size={16} strokeWidth={2} />
+                </span>
+              </button>
+            )}
           </div>
         </div>
         {err && (
@@ -878,6 +1478,7 @@ export function ClaudePanel({
           setRenamingId={setRenamingId}
           onRename={rename}
           onDelete={remove}
+          onCollapse={() => setListOpen(false)}
         />
       )}
     </aside>

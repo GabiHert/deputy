@@ -463,18 +463,8 @@ func (e *Engine) outMessages(ms []domain.Message) any {
 	return ms
 }
 
-func (e *Engine) chatOwners() map[string]domain.Agent {
-	owners := map[string]domain.Agent{}
-	for _, ag := range e.Store.Agents() {
-		for _, c := range ag.Chats {
-			owners[c] = ag
-		}
-	}
-	return owners
-}
-
 func (e *Engine) chatsList(a args) []map[string]any {
-	owners := e.chatOwners()
+	router := domain.NewRouter(e.Store.Agents())
 	agent := a.str("agent")
 	text := strings.ToLower(a.str("text"))
 	var activeSince time.Time
@@ -484,7 +474,7 @@ func (e *Engine) chatsList(a args) []map[string]any {
 	limit := a.num("limit", 50, 500)
 	out := []map[string]any{}
 	for _, c := range e.Store.Chats() {
-		owner, has := owners[c.JID]
+		owner, viaAll, has := router.Owner(c.JID)
 		switch {
 		case agent == "none" && has, agent != "" && agent != "none" && owner.ID != agent:
 			continue
@@ -496,6 +486,7 @@ func (e *Engine) chatsList(a args) []map[string]any {
 		out = append(out, map[string]any{
 			"jid": c.JID, "name": c.Name, "isGroup": c.IsGroup, "members": c.Members,
 			"lastAt": c.LastAt.UnixMilli(), "lastText": c.LastText, "agentId": owner.ID, "agentName": owner.Name,
+			"viaAllDirect": viaAll,
 		})
 		if len(out) >= limit {
 			break
@@ -521,7 +512,7 @@ func (e *Engine) agentsList() []map[string]any {
 		}
 		out = append(out, map[string]any{
 			"id": ag.ID, "name": ag.Name, "enabled": ag.Enabled, "mode": string(ag.Mode), "trigger": string(ag.Trigger),
-			"chats": len(ag.Chats), "chatNames": strings.Join(cn, ", "),
+			"chats": len(ag.Chats), "chatNames": strings.Join(cn, ", "), "allDirect": ag.AllDirect, "answerMe": ag.AnswerMe,
 		})
 	}
 	return out

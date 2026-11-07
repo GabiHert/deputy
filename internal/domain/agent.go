@@ -1,7 +1,10 @@
 // Package domain holds Deputy's core types.
 package domain
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // ReplyMode says what happens to a reply the agent writes.
 type ReplyMode string
@@ -27,6 +30,12 @@ type Agent struct {
 	Enabled         bool      `json:"enabled"`
 	RepoPath        string    `json:"repoPath"`
 	Chats           []string  `json:"chats"`
+	AllDirect       bool      `json:"allDirect"`    // also handles every direct chat no other agent has
+	Except          []string  `json:"except"`       // direct chats AllDirect leaves alone
+	AnswerMe        bool      `json:"answerMe"`     // the person's own messages start runs too
+	MCP             []string  `json:"mcp"`          // the person's MCP servers (claude mcp list names) it may use
+	FolderAccess    string    `json:"folderAccess"` // "" (only its repo) | "read" | "edit": what it may do in Folders
+	Folders         []string  `json:"folders"`      // folders on the Mac beyond its repo, e.g. a project's code
 	Mode            ReplyMode `json:"mode"`
 	Trigger         Trigger   `json:"trigger"`
 	WaitSeconds     int       `json:"waitSeconds"`
@@ -54,6 +63,61 @@ func (a Agent) HasChat(jid string) bool {
 	return false
 }
 
+// Skips reports whether jid is one of the direct chats the agent leaves alone.
+func (a Agent) Skips(jid string) bool {
+	for _, c := range a.Except {
+		if c == jid {
+			return true
+		}
+	}
+	return false
+}
+
+// IsDirect reports whether jid is a one-to-one chat, not a group, broadcast or channel.
+func IsDirect(jid string) bool {
+	return strings.HasSuffix(jid, "@s.whatsapp.net") || strings.HasSuffix(jid, "@lid")
+}
+
+// Router finds the agent that handles a chat. An agent picked for the chat wins;
+// otherwise a direct chat goes to the agent set to all direct chats, unless it skips it.
+type Router struct {
+	picked map[string]Agent
+	direct *Agent
+}
+
+// NewRouter builds a Router over agents.
+func NewRouter(agents []Agent) Router {
+	r := Router{picked: map[string]Agent{}}
+	for i, a := range agents {
+		for _, c := range a.Chats {
+			r.picked[c] = a
+		}
+		if a.AllDirect && r.direct == nil {
+			r.direct = &agents[i]
+		}
+	}
+	return r
+}
+
+// Owner returns the agent for jid and whether it came from "all direct chats".
+func (r Router) Owner(jid string) (a Agent, viaAll bool, ok bool) {
+	if a, ok := r.picked[jid]; ok {
+		return a, false, true
+	}
+	if r.direct != nil && IsDirect(jid) && !r.direct.Skips(jid) {
+		return *r.direct, true, true
+	}
+	return Agent{}, false, false
+}
+
+// AllDirect returns the agent set to all direct chats, if any.
+func (r Router) AllDirect() (Agent, bool) {
+	if r.direct == nil {
+		return Agent{}, false
+	}
+	return *r.direct, true
+}
+
 // AgentDefaults are the settings a new agent starts with.
 type AgentDefaults struct {
 	Mode        ReplyMode `json:"mode"`
@@ -68,6 +132,7 @@ type Settings struct {
 	MediaRetentionDays int           `json:"mediaRetentionDays"` // 0 keeps media forever
 	OpenAtLogin        bool          `json:"openAtLogin"`
 	Notify             bool          `json:"notify"`
+	MCPEnabled         bool          `json:"mcpEnabled"` // Claude Code in other projects can use Deputy
 }
 
 // DefaultSettings are the settings of a fresh install.

@@ -58,3 +58,16 @@ export function plural(n: number, word: string): string {
 export function secondsLeft(ms: number, now: number = Date.now()): number {
   return Math.max(0, Math.ceil((ms - now) / 1000));
 }
+
+/** ago gives "just now", "5 minutes ago", "3 hours ago", "2 days ago", else the date. "" for 0. */
+export function ago(ms: number, now: number = Date.now()): string {
+  if (!ms) return "";
+  const m = Math.floor((now - ms) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${plural(m, "minute")} ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${plural(h, "hour")} ago`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `${plural(d, "day")} ago`;
+  return new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}

@@ -8,6 +8,7 @@ type Handlers struct {
 	Activity func()
 	Open     func()
 	Quit     func()
+	Inbox    func() // "N unread messages"
 }
 
 // Menu actions, shared with the Objective-C side.
@@ -15,6 +16,7 @@ const (
 	actionActivity = iota
 	actionOpen
 	actionQuit
+	actionInbox
 )
 
 // Item is the menu bar icon.
@@ -38,6 +40,12 @@ func (i *Item) Install(h Handlers) {
 // SetWaiting shows how many replies wait for approval.
 func (i *Item) SetWaiting(n int) { setWaiting(n) }
 
+// SetUnread shows how many WhatsApp messages are unread, in the menu and on the Dock icon.
+func (i *Item) SetUnread(n int) { setUnread(n) }
+
+// Focused reports whether one of Deputy's windows has the keyboard focus right now.
+func Focused() bool { return focused() }
+
 func (i *Item) dispatch(action int) {
 	i.mu.Lock()
 	h := i.handlers
@@ -50,6 +58,8 @@ func (i *Item) dispatch(action int) {
 		fn = h.Open
 	case actionQuit:
 		fn = h.Quit
+	case actionInbox:
+		fn = h.Inbox
 	}
 	if fn != nil {
 		go fn()

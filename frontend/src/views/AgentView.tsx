@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, api2, errText, on, useAssistantChats, type Agent, type Chat } from "../api";
+import { api, api2, errText, on, useAssistantChats, type Agent, type Chat, type MCPServer } from "../api";
 import { Conversation } from "../components/Assistant";
 import { Markdown } from "../lib/markdown";
 import { when } from "../format";
@@ -32,7 +32,7 @@ export function AgentView({
     (id ? api.getAgent(id) : api.newAgent())
       .then((a) => {
         if (!alive) return;
-        const norm = { ...a, chats: a.chats ?? [] };
+        const norm = { ...a, chats: a.chats ?? [], except: a.except ?? [], mcp: a.mcp ?? [], folders: a.folders ?? [] };
         setAgent(norm);
         setSaved(JSON.stringify(norm));
       })
@@ -51,7 +51,7 @@ export function AgentView({
         .getAgent(id)
         .then((a) => {
           if (dirtyRef.current) return;
-          const norm = { ...a, chats: a.chats ?? [] };
+          const norm = { ...a, chats: a.chats ?? [], except: a.except ?? [], mcp: a.mcp ?? [], folders: a.folders ?? [] };
           setAgent(norm);
           setSaved(JSON.stringify(norm));
         })
@@ -87,7 +87,7 @@ export function AgentView({
     setErr("");
     try {
       const out = await api.saveAgent(agent);
-      const norm = { ...out, chats: out.chats ?? [] };
+      const norm = { ...out, chats: out.chats ?? [], except: out.except ?? [], mcp: out.mcp ?? [], folders: out.folders ?? [] };
       setAgent(norm);
       setSaved(JSON.stringify(norm));
       setNotice("Saved.");
@@ -110,6 +110,8 @@ export function AgentView({
 
   const otherOwner = (jid: string) => agents.find((a) => a.id !== agent.id && (a.chats ?? []).includes(jid));
   const isNew = !agent.id;
+  const allOwner = agents.find((a) => a.id !== agent.id && a.allDirect);
+  const skippable = chats.filter((c) => !c.isGroup && !agent.except.includes(c.jid) && !agent.chats.includes(c.jid));
   const modeHelp: Record<string, string> = {
     auto: "Replies go out as soon as the agent writes them.",
     approve: "Replies wait in Activity until you send them.",
@@ -126,16 +128,6 @@ export function AgentView({
         <div className="row">
           {dirty && <span className="muted small">Unsaved changes</span>}
           {!dirty && notice && <span className="ok-text small">{notice}</span>}
-          {!isNew && (
-            <button
-              type="button"
-              className="btn"
-              onClick={() => api.openRepoInClaude(agent.id).catch((e) => setErr(errText(e)))}
-            >
-              <Icon name="terminal" size={16} />
-              Open repo in Claude Code
-            </button>
-          )}
           <button type="button" className="btn btn--primary" onClick={save} disabled={busy || (!dirty && !isNew)}>
             {busy ? "Saving…" : isNew ? "Create agent" : "Save"}
           </button>
@@ -205,7 +197,11 @@ export function AgentView({
               <input id="a-name" className="input" value={agent.name} onChange={(e) => set("name", e.target.value)} placeholder="Checagem" />
             </div>
             <div className="chips">
-              {agent.chats.length === 0 && <span className="muted small">No chats yet. The agent does nothing until you add one.</span>}
+              {agent.chats.length === 0 && (
+                <span className="muted small">
+                  {agent.allDirect ? "No group chats picked. It handles your direct chats." : "No chats yet. The agent does nothing until you add one."}
+                </span>
+              )}
               {agent.chats.map((jid) => (
                 <span key={jid} className="chip">
                   {chatName(jid)}
@@ -238,6 +234,50 @@ export function AgentView({
                 })}
               </select>
             </div>
+            <Check
+              id="a-alldirect"
+              checked={agent.allDirect}
+              onChange={(v) => set("allDirect", v)}
+              title="Also handle every direct chat"
+              help={
+                allOwner
+                  ? `Takes this over from ${allOwner.name || "another agent"}. Direct chats you gave another agent stay with that agent.`
+                  : "Every one-to-one chat, including new ones. Direct chats you gave another agent stay with that agent. Groups are never included."
+              }
+            />
+            {agent.allDirect && (
+              <div className="chips">
+                <span className="muted small">Leaves alone:</span>
+                {agent.except.length === 0 && <span className="muted small">nobody</span>}
+                {agent.except.map((jid) => (
+                  <span key={jid} className="chip">
+                    {chatName(jid)}
+                    <button
+                      type="button"
+                      className="chip__x"
+                      aria-label={`Stop leaving ${chatName(jid)} alone`}
+                      onClick={() => set("except", agent.except.filter((c) => c !== jid))}
+                    >
+                      <Icon name="close" size={14} strokeWidth={2} />
+                    </button>
+                  </span>
+                ))}
+                <SrLabel htmlFor="add-except">Leave a direct chat alone</SrLabel>
+                <select
+                  id="add-except"
+                  className="chip-add"
+                  value=""
+                  onChange={(e) => e.target.value && set("except", [...agent.except, e.target.value])}
+                >
+                  <option value="">+ Leave a chat alone</option>
+                  {skippable.map((c) => (
+                    <option key={c.jid} value={c.jid}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </section>
 
           <section className="card section" aria-labelledby="h-when">
@@ -271,6 +311,13 @@ export function AgentView({
               />
               {agent.trigger === "mention" && <span className="muted small">In direct chats every message counts.</span>}
             </div>
+            <Check
+              id="a-answerme"
+              checked={agent.answerMe}
+              onChange={(v) => set("answerMe", v)}
+              title="Answer my own messages"
+              help="Every message you type in its chats starts a run, so you can talk to it. Best in a chat that's just you, such as a group with only yourself. Its own replies never count."
+            />
             <div className="grid3">
               <NumberField id="a-wait" label="Wait for more messages" suffix="seconds" value={agent.waitSeconds} min={0} max={600} onChange={(v) => set("waitSeconds", v)} />
               <NumberField id="a-max" label="At most" suffix="replies an hour" value={agent.maxPerHour} min={1} max={500} onChange={(v) => set("maxPerHour", v)} />
@@ -377,6 +424,15 @@ export function AgentView({
               helpTone="warn"
               help="Anyone in its chats could get it to run commands on your Mac. Leave off unless you trust every member."
             />
+            <FolderAccess
+              level={agent.folderAccess}
+              folders={agent.folders}
+              bash={agent.bash}
+              onLevel={(v) => set("folderAccess", v)}
+              onFolders={(v) => set("folders", v)}
+              onError={setErr}
+            />
+            <MCPAccess value={agent.mcp} onChange={(v) => set("mcp", v)} />
             <div className="field">
               <label htmlFor="t-model" className="field__label">
                 Model
@@ -488,5 +544,131 @@ function AgentChat({ agentId, agentName }: { agentId: string; agentName: string 
         suggestions={[{ label: "What does it know so far?" }, { label: "Read its last replies and suggest improvements" }]}
       />
     </div>
+  );
+}
+
+const statusText: Record<string, string> = { connected: "Connected", failed: "Not connecting", "needs auth": "Needs sign-in", pending: "Waiting for approval" };
+
+/** The person's Claude Code MCP servers, each one a tick box for this agent. */
+function MCPAccess({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const [servers, setServers] = useState<MCPServer[] | null>(null);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const load = (refresh: boolean) => {
+    setBusy(true);
+    setErr("");
+    api
+      .listMCPServers(refresh)
+      .then(setServers)
+      .catch((e) => setErr(errText(e)))
+      .finally(() => setBusy(false));
+  };
+  useEffect(() => load(false), []);
+  const known = new Set((servers ?? []).map((s) => s.name));
+  const gone = value.filter((n) => servers && !known.has(n));
+  const toggle = (name: string, on: boolean) => onChange(on ? [...value, name] : value.filter((n) => n !== name));
+  return (
+    <fieldset className="mcp-access">
+      <legend className="field__label">MCP servers it can use</legend>
+      <p className="muted small">
+        The servers your Claude Code has, like your calendar or Notion. The agent acts as you with them, and people in its chats can ask it
+        to use them. Turn on only what it needs.
+      </p>
+      {busy && !servers && <span className="muted small">Checking your MCP servers… this takes a few seconds.</span>}
+      {err && <span className="error small">{err}</span>}
+      {servers && servers.length === 0 && <span className="muted small">Your Claude Code has no MCP servers. Add them with claude mcp add.</span>}
+      {servers?.map((s, i) => (
+        <Check
+          key={s.name}
+          id={`mcp-${i}`}
+          checked={value.includes(s.name)}
+          onChange={(v) => toggle(s.name, v)}
+          title={s.name}
+          help={`${statusText[s.status] ?? s.status} · ${s.target}`}
+          helpTone={s.status === "connected" ? undefined : "warn"}
+        />
+      ))}
+      {gone.map((n) => (
+        <Check key={n} id={`mcp-gone-${n}`} checked onChange={() => toggle(n, false)} title={n} help="No longer in your Claude Code. Untick to remove." helpTone="warn" />
+      ))}
+      {servers && (
+        <button type="button" className="btn btn--quiet btn--sm" onClick={() => load(true)} disabled={busy}>
+          {busy ? "Checking…" : "Check again"}
+        </button>
+      )}
+    </fieldset>
+  );
+}
+
+const FOLDER_LEVELS: { id: string; label: string; help: string }[] = [
+  { id: "", label: "Off", help: "Only its own knowledge repo." },
+  { id: "read", label: "Read files", help: "It can read and search the folders below, but not change them." },
+  { id: "edit", label: "Read and change files", help: "It can also edit and create files in those folders." },
+];
+
+/** Folders on the Mac the agent may use beyond its repo, in its WhatsApp runs and its side chats. */
+function FolderAccess({
+  level,
+  folders,
+  bash,
+  onLevel,
+  onFolders,
+  onError,
+}: {
+  level: string;
+  folders: string[];
+  bash: boolean;
+  onLevel: (v: string) => void;
+  onFolders: (v: string[]) => void;
+  onError: (t: string) => void;
+}) {
+  const add = async () => {
+    try {
+      const p = await api.chooseFolder();
+      if (p && !folders.includes(p)) onFolders([...folders, p]);
+    } catch (e) {
+      onError(errText(e));
+    }
+  };
+  const short = (p: string) => p.replace(/^\/Users\/[^/]+/, "~");
+  return (
+    <fieldset className="folder-access">
+      <legend className="field__label">Computer access</legend>
+      <div className="folder-access__levels" role="radiogroup" aria-label="Computer access">
+        {FOLDER_LEVELS.map((l) => (
+          <label key={l.id || "off"} className={level === l.id ? "folder-access__lvl folder-access__lvl--on" : "folder-access__lvl"}>
+            <input type="radio" name="folder-access" checked={level === l.id} onChange={() => onLevel(l.id)} />
+            <span>
+              <span className="folder-access__name">{l.label}</span>
+              <span className="muted xsmall">{l.help}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      {level && (
+        <div className="chips">
+          {folders.length === 0 && <span className="muted small">Pick the folders it may use, like a project's code.</span>}
+          {folders.map((f) => (
+            <span key={f} className="chip" title={f}>
+              <Icon name="folder" size={13} />
+              {short(f)}
+              <button type="button" className="chip__x" aria-label={`Remove ${f}`} onClick={() => onFolders(folders.filter((x) => x !== f))}>
+                <Icon name="close" size={14} strokeWidth={2} />
+              </button>
+            </span>
+          ))}
+          <button type="button" className="chip-add" onClick={add}>
+            + Add folder
+          </button>
+        </div>
+      )}
+      {level && (
+        <span className="check__help check__help--warn">
+          This applies when it answers WhatsApp and when you ask it something in Sessions. People in its chats can ask it about
+          these files{level === "edit" ? " or to change them" : ""}
+          {bash ? ", and with shell commands on it can reach the rest of your Mac too" : ""}.
+        </span>
+      )}
+    </fieldset>
   );
 }

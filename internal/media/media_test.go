@@ -3,6 +3,7 @@ package media
 import (
 	"bytes"
 	"context"
+	"encoding/binary"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,5 +47,30 @@ func TestStoreSaveRelAndExt(t *testing.T) {
 	}
 	if Ext("audio/ogg; codecs=opus") != ".ogg" {
 		t.Fatal("ext")
+	}
+}
+
+func oggPage(granule uint64, payload []byte) []byte {
+	p := make([]byte, 27)
+	copy(p, "OggS")
+	binary.LittleEndian.PutUint64(p[6:], granule)
+	return append(p, payload...)
+}
+
+func TestOggSeconds(t *testing.T) {
+	head := append([]byte("OpusHead"), 1, 1, 0x38, 0x01) // version, channels, pre-skip 312
+	data := append(oggPage(0, head), oggPage(48000*7+312, []byte("audio"))...)
+	if !IsOggOpus(data) {
+		t.Fatal("not recognized as Ogg Opus")
+	}
+	if s := OggSeconds(data); s != 7 {
+		t.Fatalf("seconds %d", s)
+	}
+	if OggSeconds([]byte("not ogg")) != 0 || IsOggOpus([]byte("RIFF....WAVE")) {
+		t.Fatal("garbage")
+	}
+	ogg, secs, err := ToVoiceNote(context.Background(), nil, t.TempDir(), data, "audio/ogg")
+	if err != nil || secs != 7 || len(ogg) != len(data) {
+		t.Fatalf("Ogg Opus should pass through: %d %v", secs, err)
 	}
 }

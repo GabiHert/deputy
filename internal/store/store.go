@@ -51,6 +51,10 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("could not set up the database: %w", err)
 	}
+	if err := migrate(db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("could not update the database: %w", err)
+	}
 	return &Store{db: db}, nil
 }
 

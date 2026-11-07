@@ -1,0 +1,108 @@
+# Builds Deputy on each v* tag and publishes it as a GitHub Release: the zip the in-app updater
+# installs, and SHA256SUMS. Machines that run Deputy never build it; they only download this.
+#
+# Signing secrets (Settings → Secrets and variables → Actions). Without them the release is signed
+# ad hoc, which runs on a Mac you control but will not pass Gatekeeper on a managed one.
+#   APPLE_CERT_P12_BASE64  Developer ID Application certificate and key, .p12, base64
+#   APPLE_CERT_PASSWORD    its password
+#   APPLE_SIGN_IDENTITY    "Developer ID Application: Name (TEAMID)"
+#   NOTARY_KEY_P8_BASE64   App Store Connect API key, .p8, base64
+#   NOTARY_KEY_ID          its key ID
+#   NOTARY_ISSUER          its issuer ID
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  macos:
+    runs-on: macos-14 # Apple Silicon
+    timeout-minutes: 60
+    env:
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install the Wails CLI
+        run: |
+          v=$(go list -m -f '{{.Version}}' github.com/wailsapp/wails/v2)
+          go install "github.com/wailsapp/wails/v2/cmd/wails@$v"
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Test
+        run: |
+          go vet ./internal/...
+          go test ./internal/...
+          cd frontend && npm ci && npx tsc --noEmit && npx vitest run
+
+      - name: Import the signing certificate
+        id: cert
+        env:
+          P12: ${{ secrets.APPLE_CERT_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
+          NOTARY_P8: ${{ secrets.NOTARY_KEY_P8_BASE64 }}
+        run: |
+          if [ -z "$P12" ]; then
+            echo "No signing certificate: the release is signed ad hoc."
+            exit 0
+          fi
+          kc="$RUNNER_TEMP/sign.keychain-db"
+          kcpass=$(openssl rand -hex 24)
+          security create-keychain -p "$kcpass" "$kc"
+          security set-keychain-settings -lut 21600 "$kc"
+          security unlock-keychain -p "$kcpass" "$kc"
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$kc" -P "$P12_PASSWORD" -T /usr/bin/codesign
+          rm -f "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$kcpass" "$kc" >/dev/null
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          echo "signed=1" >> "$GITHUB_OUTPUT"
+          if [ -n "$NOTARY_P8" ]; then
+            echo "$NOTARY_P8" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+            echo "notary=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build, sign and notarize
+        env:
+          DEPUTY_SIGN_IDENTITY: ${{ steps.cert.outputs.signed && secrets.APPLE_SIGN_IDENTITY || '' }}
+          NOTARY_KEY_PATH: ${{ steps.cert.outputs.notary && format('{0}/notary.p8', runner.temp) || '' }}
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER }}
+        run: bash scripts/release.sh "$TAG"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          note=""
+          if [ -z "${{ steps.cert.outputs.signed }}" ]; then
+            note="Signed ad hoc and not notarized."
+          fi
+          prerelease=""
+          case "$TAG" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$TAG" build/release/* --title "Deputy $TAG" --generate-notes \
+            --notes "$note" --verify-tag $prerelease
+
+      - name: Remove the signing material
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/notary.p8"
+          security delete-keychain "$RUNNER_TEMP/sign.keychain-db" 2>/dev/null || true

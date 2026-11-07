@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"os/exec"
+	"slices"
 	"strings"
 	"syscall"
 	"time"
@@ -40,7 +41,29 @@ type runSpec struct {
 	system    string
 	prompt    string
 	tools     []string
+	builtin   []string // Claude Code's own tools it may use on the Mac (none for most chats)
+	dirs      []string // folders those tools may use
 	onText    func(string)
+}
+
+// agentAccess is what a chat with an agent may do on the Mac: the agent's own folder access
+// (Settings > What it can do), plus shell commands when the agent has them.
+func (s *Service) agentAccess(c Chat) (tools, dirs []string) {
+	if c.Purpose != PurposeAsk {
+		return nil, nil
+	}
+	ag, err := s.d.Store.Agent(c.AgentID)
+	if err != nil || ag.FolderAccess == "" || len(ag.Folders) == 0 {
+		return nil, nil
+	}
+	tools = []string{"Read", "Glob", "Grep", "WebSearch", "WebFetch"}
+	if ag.FolderAccess == "edit" {
+		tools = append(tools, "Edit", "MultiEdit", "Write")
+	}
+	if ag.Bash {
+		tools = append(tools, "Bash")
+	}
+	return tools, ag.Folders
 }
 
 type runResult struct {
@@ -57,10 +80,12 @@ func (s *Service) claudeArgs(r runSpec) []string {
 	for _, t := range r.tools {
 		allowed = append(allowed, "mcp__deputy__"+t)
 	}
+	builtin := r.builtin
+	allowed = append(allowed, builtin...)
 	args := []string{"-p", "--output-format", "stream-json", "--verbose",
 		"--append-system-prompt", r.system,
 		"--mcp-config", string(mcpCfg), "--strict-mcp-config",
-		"--tools", "",
+		"--tools", strings.Join(builtin, ","),
 		"--allowedTools", strings.Join(allowed, ","),
 		"--setting-sources", "",
 		"--disable-slash-commands",
@@ -72,6 +97,14 @@ func (s *Service) claudeArgs(r runSpec) []string {
 		args = append(args, "--resume", r.sessionID)
 	default:
 		args = append(args, "--session-id", r.sessionID)
+	}
+	if len(builtin) > 0 {
+		for _, d := range r.dirs {
+			args = append(args, "--add-dir", d)
+		}
+		if slices.ContainsFunc(builtin, func(t string) bool { return t == "Edit" || t == "Bash" }) {
+			args = append(args, "--permission-mode", "acceptEdits")
+		}
 	}
 	if s.d.Model != "" {
 		args = append(args, "--model", s.d.Model)
@@ -193,10 +226,12 @@ func (s *Service) run(ctx context.Context, chatID, prompt string) {
 	if err != nil {
 		return
 	}
+	builtin, dirs := s.agentAccess(c)
 	spec := runSpec{
 		chatID: chatID, sessionID: c.SessionID, resume: c.Started, persist: true,
 		system: s.systemPrompt(c), prompt: prompt, tools: toolsFor(c.Purpose),
-		onText: func(t string) { s.add(chatID, "assistant", t, nil) },
+		onText:  func(t string) { s.add(chatID, "assistant", t, nil) },
+		builtin: builtin, dirs: dirs,
 	}
 	res, err := s.claudeRun(ctx, spec)
 	if errors.Is(err, errNoSession) {

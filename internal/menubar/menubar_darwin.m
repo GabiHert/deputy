@@ -1,4 +1,5 @@
 #import <Cocoa/Cocoa.h>
+#include <stdatomic.h>
 #include "menubar_darwin.h"
 
 // Implemented in Go; the numbers match the action constants in menubar.go.
@@ -17,6 +18,8 @@ extern void deputyMenuBarAction(int action);
 static NSStatusItem *statusItem;
 static DeputyMenuTarget *target;
 static int waiting;
+static int unread;
+static atomic_int deputyFocused; // 1 while one of Deputy's windows has the keyboard focus
 
 static NSMenuItem *menuItem(NSString *title, NSInteger tag) {
 	NSMenuItem *mi = [[NSMenuItem alloc] initWithTitle:title action:@selector(pick:) keyEquivalent:@""];
@@ -70,6 +73,9 @@ static void render(void) {
 	statusItem.button.toolTip = waiting > 0 ? [NSString stringWithFormat:@"Deputy: %d %@ waiting", waiting, waiting == 1 ? @"reply" : @"replies"] : @"Deputy";
 
 	NSMenu *menu = [[NSMenu alloc] init];
+	if (unread > 0) {
+		[menu addItem:menuItem([NSString stringWithFormat:@"%d unread %@", unread, unread == 1 ? @"message" : @"messages"], 3)];
+	}
 	if (waiting > 0) {
 		[menu addItem:menuItem([NSString stringWithFormat:@"Review %d waiting %@", waiting, waiting == 1 ? @"reply" : @"replies"], 0)];
 	} else {
@@ -89,7 +95,30 @@ void DeputyMenuBarInstall(void) {
 		target = [[DeputyMenuTarget alloc] init];
 		statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength];
 		render();
+		NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+		[nc addObserverForName:NSWindowDidBecomeKeyNotification object:nil queue:nil usingBlock:^(NSNotification *n) {
+			atomic_store(&deputyFocused, 1);
+		}];
+		[nc addObserverForName:NSWindowDidResignKeyNotification object:nil queue:nil usingBlock:^(NSNotification *n) {
+			atomic_store(&deputyFocused, NSApp.keyWindow != nil ? 1 : 0);
+		}];
+		[nc addObserverForName:NSApplicationDidResignActiveNotification object:nil queue:nil usingBlock:^(NSNotification *n) {
+			atomic_store(&deputyFocused, 0);
+		}];
+		atomic_store(&deputyFocused, (NSApp.isActive && NSApp.keyWindow != nil) ? 1 : 0);
 	});
+}
+
+void DeputyMenuBarSetUnread(int n) {
+	dispatch_async(dispatch_get_main_queue(), ^{
+		unread = n;
+		NSApp.dockTile.badgeLabel = n > 0 ? (n > 999 ? @"999+" : [NSString stringWithFormat:@"%d", n]) : nil;
+		render();
+	});
+}
+
+int DeputyAppFocused(void) {
+	return atomic_load(&deputyFocused);
 }
 
 void DeputyMenuBarSetWaiting(int n) {

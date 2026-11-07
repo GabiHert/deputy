@@ -324,6 +324,22 @@ func (b *Backend) ListAssistantChats() []app.AssistantChatDTO {
 	return b.v2.asst.List()
 }
 
+// AskAgentChat opens (or reopens) the side chat with jid's agent.
+func (b *Backend) AskAgentChat(jid string) (app.AssistantChatDTO, error) {
+	if err := b.ready(); err != nil {
+		return app.AssistantChatDTO{}, err
+	}
+	a, _, ok := domain.NewRouter(b.d.Store.Agents()).Owner(jid)
+	if !ok {
+		return app.AssistantChatDTO{}, errors.New("This chat has no agent. Pick one in the chat's header first.")
+	}
+	c, err := b.v2.asst.AskChat(a.ID, jid)
+	if err == nil {
+		b.emit(app.EventAssistant, c.ID)
+	}
+	return c, err
+}
+
 func (b *Backend) NewAssistantChat(purpose, agentID string) (app.AssistantChatDTO, error) {
 	if err := b.ready(); err != nil {
 		return app.AssistantChatDTO{}, err
@@ -460,6 +476,41 @@ func (b *Backend) CreateAgentFromCard(messageID string, p app.AgentProposalDTO) 
 	b.emit(app.EventChats, nil)
 	b.emit(app.EventBoard, nil)
 	return created, nil
+}
+
+// SendMessageCard sends the WhatsApp message on a card, with the person's edits when text is not empty.
+func (b *Backend) SendMessageCard(messageID, text string) error {
+	if err := b.ready(); err != nil {
+		return err
+	}
+	return b.v2.asst.Complete(messageID, "message", func(card *app.CardDTO) (string, string, error) {
+		mp := card.Message
+		if mp == nil {
+			return "", "", errors.New("that card has no message")
+		}
+		if t := strings.TrimSpace(text); t != "" {
+			mp.Text = t
+		}
+		if err := b.d.Engine.SendNow(mp.AgentID, mp.ChatJID, mp.Text); err != nil {
+			return "", "", err
+		}
+		who := "you"
+		if mp.AgentName != "" {
+			who = mp.AgentName
+		}
+		return "Sent to " + mp.ChatName, fmt.Sprintf("Sent to %s as %s: %q", mp.ChatName, who, firstLineOf(mp.Text, 120)), nil
+	})
+}
+
+func firstLineOf(s string, max int) string {
+	s = strings.TrimSpace(s)
+	if i := strings.IndexByte(s, '\n'); i >= 0 {
+		s = s[:i] + "…"
+	}
+	if r := []rune(s); len(r) > max {
+		s = string(r[:max]) + "…"
+	}
+	return s
 }
 
 // ApplyChangeCard applies a change Claude proposed to an agent.

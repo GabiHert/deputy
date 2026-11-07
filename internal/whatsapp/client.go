@@ -54,6 +54,7 @@ type Incoming struct {
 	Sender     string // sender JID
 	SenderName string
 	FromMe     bool
+	FromDeputy bool // sent by Deputy's own linked device, not typed on the phone
 	At         time.Time
 	Kind       string // domain.MsgKind values
 	Text       string
@@ -65,6 +66,19 @@ type Incoming struct {
 	QuotesMe   bool
 	// Download fetches the media bytes; nil without media.
 	Download func(ctx context.Context) ([]byte, error)
+
+	QuotedSender string
+	QuotedText   string
+	QuotedKind   string
+	Mentions     []string
+	FileSize     int64
+	MediaRef     []byte // the media message, for DownloadRef
+	History      bool   // from a history sync: old, never for agents or notifications
+	Status       string // own messages from a history sync: "sent", "delivered", "read", "played"
+	Revoked      bool   // deleted for everyone before Deputy saw it
+	// ViewOnce: a view-once photo, video or voice note. Without MediaRef it is only a placeholder:
+	// WhatsApp keeps the media on the phone.
+	ViewOnce bool
 }
 
 // Group is a group the person is in.
@@ -86,8 +100,14 @@ type Client struct {
 	onState   func(State)
 	onMessage func(Incoming)
 	onGroups  func([]Group)
+	onUpdate  func(any)
 
 	groupNames sync.Map // jid -> name
+	skipped    sync.Map // shapes of messages Deputy does not show, logged once each
+
+	timersMu    sync.Mutex
+	timers      map[string]Timer // chat JID -> disappearing-messages timer
+	timerSource func(chat string) (Timer, bool)
 }
 
 // Open opens the session store at dbPath.
@@ -108,6 +128,16 @@ func Open(ctx context.Context, dbPath string) (*Client, error) {
 func (c *Client) OnState(f func(State))      { c.onState = f }
 func (c *Client) OnMessage(f func(Incoming)) { c.onMessage = f }
 func (c *Client) OnGroups(f func([]Group))   { c.onGroups = f }
+
+// OnUpdate receives everything that is not a new message: Reaction, Revoke, Edit, Receipt,
+// ChatRead, ChatMeta, ChatPresence, Presence and History. Set it before Start.
+func (c *Client) OnUpdate(f func(any)) { c.onUpdate = f }
+
+func (c *Client) update(u any) {
+	if c.onUpdate != nil && u != nil {
+		c.onUpdate(u)
+	}
+}
 
 // State returns the current state.
 func (c *Client) State() State {
@@ -295,12 +325,22 @@ func (c *Client) handle(evt any) {
 		c.setState(func(s *State) { *s = State{State: StateStarting} })
 		go c.restart()
 	case *events.Message:
-		if c.onMessage == nil {
-			return
-		}
-		if in, ok := c.parse(e); ok {
+		in, upd := c.classify(e)
+		c.learnFromMessage(e, in, upd)
+		switch {
+		case upd != nil:
+			if _, ok := upd.(Disappearing); !ok { // learnFromMessage reported it
+				c.update(upd)
+			}
+		case in.ID != "" && c.onMessage != nil:
 			c.onMessage(in)
 		}
+	case *events.UndecryptableMessage:
+		if in, ok := c.unavailableViewOnce(e); ok && c.onMessage != nil {
+			c.onMessage(in)
+		}
+	default:
+		c.handleInbox(evt)
 	}
 }
 
@@ -319,6 +359,7 @@ func (c *Client) loadGroups() {
 	out := make([]Group, 0, len(gs))
 	for _, g := range gs {
 		c.groupNames.Store(g.JID.String(), g.Name)
+		c.learnGroupTimer(g.JID, g.GroupEphemeral, time.Time{})
 		out = append(out, Group{JID: g.JID.String(), Name: g.Name, Members: len(g.Participants)})
 	}
 	if c.onGroups != nil {
@@ -379,6 +420,15 @@ func (c *Client) contactName(j types.JID) string {
 	return "Unknown contact"
 }
 
+// IsMe reports whether jid is the owner, by phone number or LID.
+func (c *Client) IsMe(jid string) bool {
+	cli, err := c.client()
+	if err != nil {
+		return false
+	}
+	return c.isMe(cli, jid)
+}
+
 // isMe reports whether jid is the person, by phone number or LID.
 func (c *Client) isMe(cli *whatsmeow.Client, jid string) bool {
 	if jid == "" || cli.Store.ID == nil {
@@ -391,23 +441,62 @@ func (c *Client) isMe(cli *whatsmeow.Client, jid string) bool {
 	return !cli.Store.LID.IsEmpty() && user == cli.Store.LID.User
 }
 
-func (c *Client) parse(e *events.Message) (Incoming, bool) {
+// classify turns a message event into a new message (Incoming) or a change to an earlier one
+// (Reaction, Revoke or Edit). Both are empty for what Deputy does not show.
+func (c *Client) classify(e *events.Message) (Incoming, any) {
 	cli, err := c.client()
 	if err != nil {
-		return Incoming{}, false
+		return Incoming{}, nil
 	}
-	if e.Info.Chat.Server == types.BroadcastServer || e.Info.Chat.Server == types.NewsletterServer || e.IsEdit {
-		return Incoming{}, false
+	if e.Info.Chat.Server == types.BroadcastServer || e.Info.Chat.Server == types.NewsletterServer {
+		return Incoming{}, nil
 	}
 	m := e.Message
-	in := Incoming{
-		ID: e.Info.ID, Chat: e.Info.Chat.String(), IsGroup: e.Info.IsGroup, Sender: e.Info.Sender.ToNonAD().String(),
-		SenderName: e.Info.PushName, FromMe: e.Info.IsFromMe, At: e.Info.Timestamp,
+	if m == nil {
+		return Incoming{}, nil
 	}
-	if in.SenderName == "" && !in.FromMe {
-		in.SenderName = c.contactName(e.Info.Sender.ToNonAD())
+	chat := e.Info.Chat.String()
+	sender := e.Info.Sender.ToNonAD().String()
+	if pm := m.GetProtocolMessage(); pm != nil {
+		switch pm.GetType() {
+		case waE2E.ProtocolMessage_REVOKE:
+			return Incoming{}, Revoke{Chat: chat, TargetID: pm.GetKey().GetID(), Sender: sender, FromMe: e.Info.IsFromMe}
+		case waE2E.ProtocolMessage_MESSAGE_EDIT:
+			text, _ := textOf(pm.GetEditedMessage())
+			return Incoming{}, Edit{Chat: chat, TargetID: pm.GetKey().GetID(), Text: text, At: e.Info.Timestamp}
+		case waE2E.ProtocolMessage_EPHEMERAL_SETTING:
+			return Incoming{}, ephemeralSetting(chat, pm, e.Info.Timestamp)
+		}
+		return Incoming{}, nil
 	}
+	if r := m.GetReactionMessage(); r != nil {
+		name := e.Info.PushName
+		if name == "" && !e.Info.IsFromMe {
+			name = c.contactName(e.Info.Sender.ToNonAD())
+		}
+		at := e.Info.Timestamp
+		if ms := r.GetSenderTimestampMS(); ms > 0 {
+			at = time.UnixMilli(ms)
+		}
+		return Incoming{}, Reaction{Chat: chat, TargetID: r.GetKey().GetID(), Sender: sender, SenderName: name,
+			FromMe: e.Info.IsFromMe, Emoji: r.GetText(), At: at}
+	}
+	if e.IsEdit {
+		return Incoming{}, nil
+	}
+	in, _ := c.header(cli, &e.Info)
 	var ctxInfo *waE2E.ContextInfo
+	var media proto.Message // the downloadable part, kept so it can be fetched later
+	if e.IsViewOnce {
+		// A view-once photo, video or voice note: kept as media when it came with its key and
+		// path (viewOnceKind only says so for those three), else a placeholder.
+		kind, downloadable := viewOnceKind(m)
+		if !downloadable {
+			c.fillContext(cli, &in, viewOncePlaceholder(&in, m, kind))
+			return in, nil
+		}
+		in.ViewOnce = true
+	}
 	switch {
 	case m.GetConversation() != "":
 		in.Kind, in.Text = "text", m.GetConversation()
@@ -417,6 +506,7 @@ func (c *Client) parse(e *events.Message) (Incoming, bool) {
 	case m.GetImageMessage() != nil:
 		im := m.GetImageMessage()
 		in.Kind, in.Text, in.Mime, ctxInfo = "image", im.GetCaption(), im.GetMimetype(), im.GetContextInfo()
+		in.FileSize, media = int64(im.GetFileLength()), &waE2E.Message{ImageMessage: im}
 		in.Download = func(ctx context.Context) ([]byte, error) { return cli.Download(ctx, im) }
 	case m.GetAudioMessage() != nil:
 		au := m.GetAudioMessage()
@@ -424,30 +514,69 @@ func (c *Client) parse(e *events.Message) (Incoming, bool) {
 		if au.GetPTT() {
 			in.Kind = "voice"
 		}
+		in.FileSize, media = int64(au.GetFileLength()), &waE2E.Message{AudioMessage: au}
 		in.Download = func(ctx context.Context) ([]byte, error) { return cli.Download(ctx, au) }
 	case m.GetVideoMessage() != nil:
 		v := m.GetVideoMessage()
 		in.Kind, in.Text, in.Mime, in.Seconds, ctxInfo = "video", v.GetCaption(), v.GetMimetype(), int(v.GetSeconds()), v.GetContextInfo()
+		in.FileSize, media = int64(v.GetFileLength()), &waE2E.Message{VideoMessage: v}
+		in.Download = func(ctx context.Context) ([]byte, error) { return cli.Download(ctx, v) }
 	case m.GetDocumentMessage() != nil:
 		d := m.GetDocumentMessage()
 		in.Kind, in.Text, in.Mime, in.FileName, ctxInfo = "document", d.GetCaption(), d.GetMimetype(), d.GetFileName(), d.GetContextInfo()
+		in.FileSize, media = int64(d.GetFileLength()), &waE2E.Message{DocumentMessage: d}
+		in.Download = func(ctx context.Context) ([]byte, error) { return cli.Download(ctx, d) }
 	case m.GetStickerMessage() != nil:
-		in.Kind = "sticker"
+		st := m.GetStickerMessage()
+		in.Kind, in.Mime, ctxInfo = "sticker", st.GetMimetype(), st.GetContextInfo()
+		in.FileSize, media = int64(st.GetFileLength()), &waE2E.Message{StickerMessage: st}
 	default:
-		return Incoming{}, false // reactions, receipts, protocol messages
+		c.logSkipped(e)
+		return Incoming{}, nil // receipts, polls, calls and other things Deputy does not show
 	}
+	if media != nil {
+		in.MediaRef, _ = proto.Marshal(media)
+	}
+	c.fillContext(cli, &in, ctxInfo)
+	return in, nil
+}
+
+// header fills in who sent a message, where and when. It is false for chats Deputy leaves out.
+func (c *Client) header(cli *whatsmeow.Client, info *types.MessageInfo) (Incoming, bool) {
+	if info.Chat.Server == types.BroadcastServer || info.Chat.Server == types.NewsletterServer {
+		return Incoming{}, false
+	}
+	in := Incoming{
+		ID: info.ID, Chat: info.Chat.String(), IsGroup: info.IsGroup, Sender: info.Sender.ToNonAD().String(),
+		SenderName: info.PushName, FromMe: info.IsFromMe, At: info.Timestamp,
+	}
+	if in.FromMe && cli.Store.ID != nil && info.Sender.Device == cli.Store.ID.Device {
+		in.FromDeputy = true
+	}
+	if in.SenderName == "" && !in.FromMe {
+		in.SenderName = c.contactName(info.Sender.ToNonAD())
+	}
+	return in, true
+}
+
+// fillContext reads mentions and the quoted message from a message's ContextInfo.
+func (c *Client) fillContext(cli *whatsmeow.Client, in *Incoming, ctxInfo *waE2E.ContextInfo) {
 	if ctxInfo != nil {
 		for _, j := range ctxInfo.GetMentionedJID() {
+			in.Mentions = append(in.Mentions, j)
 			if c.isMe(cli, j) {
 				in.MentionsMe = true
 			}
 		}
 		in.QuotedID = ctxInfo.GetStanzaID()
-		if in.QuotedID != "" && c.isMe(cli, ctxInfo.GetParticipant()) {
-			in.QuotesMe = true
+		if in.QuotedID != "" {
+			in.QuotedSender = ctxInfo.GetParticipant()
+			in.QuotedText, in.QuotedKind = textOf(ctxInfo.GetQuotedMessage())
+			if c.isMe(cli, in.QuotedSender) {
+				in.QuotesMe = true
+			}
 		}
 	}
-	return in, true
 }
 
 func parseChat(jid string) (types.JID, error) {
@@ -468,7 +597,7 @@ func (c *Client) SendText(ctx context.Context, chat, text string) (string, error
 	if err != nil {
 		return "", err
 	}
-	resp, err := cli.SendMessage(ctx, j, &waE2E.Message{Conversation: proto.String(text)})
+	resp, err := c.sendMessage(ctx, cli, j, &waE2E.Message{Conversation: proto.String(text)})
 	return resp.ID, err
 }
 
@@ -491,7 +620,7 @@ func (c *Client) SendImage(ctx context.Context, chat string, data []byte, mime, 
 		URL: proto.String(up.URL), DirectPath: proto.String(up.DirectPath), MediaKey: up.MediaKey,
 		FileEncSHA256: up.FileEncSHA256, FileSHA256: up.FileSHA256, FileLength: proto.Uint64(up.FileLength),
 	}}
-	resp, err := cli.SendMessage(ctx, j, msg)
+	resp, err := c.sendMessage(ctx, cli, j, msg)
 	return resp.ID, err
 }
 
@@ -514,7 +643,7 @@ func (c *Client) SendVoice(ctx context.Context, chat string, ogg []byte, seconds
 		URL: proto.String(up.URL), DirectPath: proto.String(up.DirectPath), MediaKey: up.MediaKey,
 		FileEncSHA256: up.FileEncSHA256, FileSHA256: up.FileSHA256, FileLength: proto.Uint64(up.FileLength),
 	}}
-	resp, err := cli.SendMessage(ctx, j, msg)
+	resp, err := c.sendMessage(ctx, cli, j, msg)
 	return resp.ID, err
 }
 

@@ -20,6 +20,9 @@ type AgentRun struct {
 	Model        string // "" = the person's default
 	Web          bool
 	Bash         bool
+	MCP          []string // names of the person's MCP servers the agent may use
+	Folders      []string // extra folders it may use
+	ReadOnly     bool     // Folders may be read, not changed
 	Timeout      time.Duration
 }
 
@@ -90,9 +93,18 @@ func (rn Runner) Run(ctx context.Context, r AgentRun) (AgentResult, error) {
 	} else {
 		disallowed = append(disallowed, "Bash")
 	}
+	for _, name := range r.MCP {
+		tools = append(tools, MCPToolRule(name))
+	}
+	if r.ReadOnly {
+		disallowed = append(disallowed, ReadOnlyRules(r.Folders)...)
+	}
 	args := []string{"-p", "--output-format", "json", "--json-schema", resultSchema, "--no-session-persistence",
 		"--permission-mode", "acceptEdits", "--allowedTools", strings.Join(tools, " "),
 		"--disallowedTools", strings.Join(disallowed, " "), "--append-system-prompt", r.SystemPrompt}
+	for _, d := range r.Folders {
+		args = append(args, "--add-dir", d)
+	}
 	if r.Model != "" {
 		args = append(args, "--model", r.Model)
 	}

@@ -59,7 +59,15 @@ function useBoard(): [Board | null, number, string, () => void] {
   return [board, version, err, reload];
 }
 
-export function BoardView({ onOpenAgent, onOpenChats, onOpenLog }: { onOpenAgent: (id: string) => void; onOpenChats: () => void; onOpenLog: () => void }) {
+export function BoardView({
+  onOpenAgent,
+  onOpenChats,
+  onOpenLog,
+}: {
+  onOpenAgent: (id: string) => void;
+  onOpenChats: () => void;
+  onOpenLog: () => void;
+}) {
   const [board, version, loadErr] = useBoard();
   const [text, setText] = useState("");
   const [err, setErr] = useState("");
@@ -102,12 +110,20 @@ export function BoardView({ onOpenAgent, onOpenChats, onOpenLog }: { onOpenAgent
       <div className="board__meta">
         <span className="muted small">{label}</span>
         <div className="row row--tight">
-          <button type="button" className="btn btn--sm" onClick={() => inputRef.current?.focus()}>
+          <button
+            type="button"
+            className="btn btn--sm"
+            onClick={() => inputRef.current?.focus()}
+          >
             <Icon name="refresh" size={14} strokeWidth={2} />
             Change layout
           </button>
           {!!board?.layoutAt && (
-            <button type="button" className="btn btn--quiet btn--sm" onClick={() => api2.resetBoard().catch((e) => setErr(errText(e)))}>
+            <button
+              type="button"
+              className="btn btn--quiet btn--sm"
+              onClick={() => api2.resetBoard().catch((e) => setErr(errText(e)))}
+            >
               Reset
             </button>
           )}
@@ -126,12 +142,22 @@ export function BoardView({ onOpenAgent, onOpenChats, onOpenLog }: { onOpenAgent
       )}
       {board && blocks.length === 0 && !board.building && (
         <div className="card empty">
-          <span className="muted">The board is empty. Tell Claude what you want to see below.</span>
+          <span className="muted">
+            The board is empty. Tell Claude what you want to see below.
+          </span>
         </div>
       )}
       <div className="board__grid">
         {blocks.map((b) => (
-          <BlockView key={b.id} b={b} version={version} chatId={board?.chatId ?? ""} onOpenAgent={onOpenAgent} onOpenChats={onOpenChats} onOpenLog={onOpenLog} />
+          <BlockView
+            key={b.id}
+            b={b}
+            version={version}
+            chatId={board?.chatId ?? ""}
+            onOpenAgent={onOpenAgent}
+            onOpenChats={onOpenChats}
+            onOpenLog={onOpenLog}
+          />
         ))}
       </div>
       <form
@@ -141,7 +167,9 @@ export function BoardView({ onOpenAgent, onOpenChats, onOpenLog }: { onOpenAgent
           change();
         }}
       >
-        <SrLabel htmlFor="board-ask">Tell Claude how to change the layout</SrLabel>
+        <SrLabel htmlFor="board-ask">
+          Tell Claude how to change the layout
+        </SrLabel>
         <input
           id="board-ask"
           ref={inputRef}
@@ -150,11 +178,27 @@ export function BoardView({ onOpenAgent, onOpenChats, onOpenLog }: { onOpenAgent
           onChange={(e) => setText(e.target.value)}
           placeholder="Tell Claude how to change the layout, like “add the open claims as a list”"
         />
-        <button type="submit" className="btn btn--primary" disabled={sending || !text.trim() || board?.building}>
+        <button
+          type="submit"
+          className="btn btn--primary"
+          disabled={sending || !text.trim() || board?.building}
+        >
           Change
         </button>
       </form>
-      {lastWord && !board?.building && <div className={lastWord.role === "error" ? "board__word error-text" : "board__word"}>{lastWord.role === "error" ? lastWord.text : <Markdown text={lastWord.text} />}</div>}
+      {lastWord && !board?.building && (
+        <div
+          className={
+            lastWord.role === "error" ? "board__word error-text" : "board__word"
+          }
+        >
+          {lastWord.role === "error" ? (
+            lastWord.text
+          ) : (
+            <Markdown text={lastWord.text} />
+          )}
+        </div>
+      )}
       {err && (
         <span className="error-text" role="alert">
           {err}
@@ -184,7 +228,9 @@ function BlockView({
   const [showSource, setShowSource] = useState(false);
   const [err, setErr] = useState("");
   const src = describeSource(b);
-  const items = Array.isArray(b.data?.items) ? (b.data!.items as unknown[]) : [];
+  const items = Array.isArray(b.data?.items)
+    ? (b.data!.items as unknown[])
+    : [];
   const wide = b.span === 2 || b.type === "stats";
   const tone = b.type === "replies" && items.length > 0 ? " block--warn" : "";
 
@@ -203,7 +249,12 @@ function BlockView({
       body = <RunsBlock runs={items as Run[]} onOpenLog={onOpenLog} />;
       break;
     case "messages":
-      body = <MessagesBlock msgs={items as BoardMessage[]} onOpenChats={onOpenChats} />;
+      body = (
+        <MessagesBlock
+          msgs={items as BoardMessage[]}
+          onOpenChats={onOpenChats}
+        />
+      );
       break;
     case "table":
       body = <TableBlock items={items} columns={b.columns ?? []} />;
@@ -215,7 +266,13 @@ function BlockView({
       body = <Markdown text={b.text} className="prose-block" />;
       break;
     case "claude":
-      body = b.text ? <Markdown text={b.text} className="prose-block" /> : <span className="muted small">{b.refreshing ? "Claude is writing this…" : "Not written yet."}</span>;
+      body = b.text ? (
+        <Markdown text={b.text} className="prose-block" />
+      ) : (
+        <span className="muted small">
+          {b.refreshing ? "Claude is writing this…" : "Not written yet."}
+        </span>
+      );
       break;
     case "agent":
       body = b.agent ? (
@@ -226,10 +283,17 @@ function BlockView({
           <div className="grow">
             <strong className="strong">{b.agent.name}</strong>
             <div className="muted xsmall">
-              {(b.agent.chats ?? []).length} chat{(b.agent.chats ?? []).length === 1 ? "" : "s"} · {MODE_LABEL[b.agent.mode] ?? b.agent.mode} · {b.agent.enabled ? "on" : "paused"}
+              {(b.agent.chats ?? []).length} chat
+              {(b.agent.chats ?? []).length === 1 ? "" : "s"} ·{" "}
+              {MODE_LABEL[b.agent.mode] ?? b.agent.mode} ·{" "}
+              {b.agent.enabled ? "on" : "paused"}
             </div>
           </div>
-          <button type="button" className="btn btn--sm" onClick={() => onOpenAgent(b.agent!.id)}>
+          <button
+            type="button"
+            className="btn btn--sm"
+            onClick={() => onOpenAgent(b.agent!.id)}
+          >
             Open
           </button>
         </div>
@@ -244,18 +308,25 @@ function BlockView({
       body = <CustomFrame b={b} version={version} showSource={showSource} />;
       break;
     default:
-      body = <span className="muted small">Unknown block type “{b.type}”.</span>;
+      body = (
+        <span className="muted small">Unknown block type “{b.type}”.</span>
+      );
   }
 
   return (
-    <section className={`card block${wide ? " block--wide" : ""}${tone}`} aria-labelledby={`blk-${b.id}`}>
+    <section
+      className={`card block${wide ? " block--wide" : ""}${tone}`}
+      aria-labelledby={`blk-${b.id}`}
+    >
       <div className="block__head">
         <h2 id={`blk-${b.id}`} className="block__title">
           {b.title}
         </h2>
         {b.type === "claude" && (
           <div className="row row--tight">
-            <span className="pill pill--claude">Claude · {scheduleLabel(b.schedule)}</span>
+            <span className="pill pill--claude">
+              Claude · {scheduleLabel(b.schedule)}
+            </span>
             <button
               type="button"
               className="icon-btn"
@@ -271,7 +342,12 @@ function BlockView({
           </div>
         )}
         {b.type === "custom" && (
-          <button type="button" className="chip-btn" aria-pressed={showSource} onClick={() => setShowSource(!showSource)}>
+          <button
+            type="button"
+            className="chip-btn"
+            aria-pressed={showSource}
+            onClick={() => setShowSource(!showSource)}
+          >
             Custom HTML · {showSource ? "hide source" : "show source"}
           </button>
         )}
@@ -283,7 +359,11 @@ function BlockView({
         </div>
       )}
       {b.type === "claude" && (b.refreshing || b.textAt > 0) && (
-        <div className="block__src">{b.refreshing ? "Claude is writing this now…" : `Written ${when(b.textAt)}`}</div>
+        <div className="block__src">
+          {b.refreshing
+            ? "Claude is writing this now…"
+            : `Written ${when(b.textAt)}`}
+        </div>
       )}
       {b.error ? (
         <span className="error-text small" role="alert">
@@ -305,12 +385,21 @@ function scheduleLabel(s: string): string {
 }
 
 function StatsBlock({ items }: { items: Group[] }) {
-  if (items.length === 0) return <span className="muted small">Nothing yet.</span>;
+  if (items.length === 0)
+    return <span className="muted small">Nothing yet.</span>;
   return (
     <div className="stat-tiles">
       {items.map((g) => (
         <div key={g.key} className="stat-tile">
-          <div className={g.key === "waiting" && g.value > 0 ? "stat-tile__num stat-tile__num--warn" : "stat-tile__num"}>{g.value.toLocaleString("en")}</div>
+          <div
+            className={
+              g.key === "waiting" && g.value > 0
+                ? "stat-tile__num stat-tile__num--warn"
+                : "stat-tile__num"
+            }
+          >
+            {g.value.toLocaleString("en")}
+          </div>
           <div className="muted xsmall">{g.label}</div>
         </div>
       ))}
@@ -319,7 +408,8 @@ function StatsBlock({ items }: { items: Group[] }) {
 }
 
 function BarsBlock({ items }: { items: Group[] }) {
-  if (items.length === 0) return <span className="muted small">Nothing yet.</span>;
+  if (items.length === 0)
+    return <span className="muted small">Nothing yet.</span>;
   const max = Math.max(1, ...items.map((g) => g.value));
   return (
     <div className="bars">
@@ -327,9 +417,14 @@ function BarsBlock({ items }: { items: Group[] }) {
         <div key={g.key} className="bars__row">
           <span className="bars__label ellipsis">{g.label}</span>
           <span className="bars__track">
-            <span className="bars__bar" style={{ width: `${(g.value / max) * 100}%` }} />
+            <span
+              className="bars__bar"
+              style={{ width: `${(g.value / max) * 100}%` }}
+            />
           </span>
-          <span className="bars__val tabular">{g.value.toLocaleString("en")}</span>
+          <span className="bars__val tabular">
+            {g.value.toLocaleString("en")}
+          </span>
         </div>
       ))}
     </div>
@@ -337,7 +432,8 @@ function BarsBlock({ items }: { items: Group[] }) {
 }
 
 function RepliesBlock({ runs }: { runs: Run[] }) {
-  if (runs.length === 0) return <span className="muted small">Nothing is waiting for you.</span>;
+  if (runs.length === 0)
+    return <span className="muted small">Nothing is waiting for you.</span>;
   return (
     <div className="replies">
       {runs.map((r) => (
@@ -369,27 +465,51 @@ function ReplyItem({ r }: { r: Run }) {
       <div className="small fg2">
         <strong className="strong">{first?.senderName || r.chatName}</strong>
         {r.isGroup ? ` in ${r.chatName}` : ""}
-        {first ? ` · “${(first.text || first.transcript).slice(0, 90)}${(first.text || first.transcript).length > 90 ? "…" : ""}”` : ""}
+        {first
+          ? ` · “${(first.text || first.transcript).slice(0, 90)}${(first.text || first.transcript).length > 90 ? "…" : ""}”`
+          : ""}
       </div>
       <div className="reply-item__draft">
         <div className="muted xsmall">{r.agentName} would reply</div>
         {editing ? (
           <>
             <SrLabel htmlFor={`bd-${r.id}`}>Reply text</SrLabel>
-            <textarea id={`bd-${r.id}`} className="input input--prose" rows={3} value={text} onChange={(e) => setText(e.target.value)} autoFocus />
+            <textarea
+              id={`bd-${r.id}`}
+              className="input input--prose"
+              rows={3}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              autoFocus
+            />
           </>
         ) : (
           <p className="prose">{r.reply}</p>
         )}
       </div>
       <div className="row">
-        <button type="button" className="btn btn--primary btn--sm" disabled={busy || !text.trim()} onClick={() => act(() => api.sendDraft(r.id, text))}>
+        <button
+          type="button"
+          className="btn btn--primary btn--sm"
+          disabled={busy || !text.trim()}
+          onClick={() => act(() => api.sendDraft(r.id, text))}
+        >
           Send
         </button>
-        <button type="button" className="btn btn--sm" disabled={busy} onClick={() => setEditing(!editing)}>
+        <button
+          type="button"
+          className="btn btn--sm"
+          disabled={busy}
+          onClick={() => setEditing(!editing)}
+        >
           {editing ? "Done editing" : "Edit"}
         </button>
-        <button type="button" className="btn btn--sm" disabled={busy} onClick={() => act(() => api.discardDraft(r.id))}>
+        <button
+          type="button"
+          className="btn btn--sm"
+          disabled={busy}
+          onClick={() => act(() => api.discardDraft(r.id))}
+        >
           Discard
         </button>
       </div>
@@ -398,7 +518,10 @@ function ReplyItem({ r }: { r: Run }) {
   );
 }
 
-const STATUS: Record<string, [string, "ok" | "warn" | "bad" | "acc" | "plain"]> = {
+const STATUS: Record<
+  string,
+  [string, "ok" | "warn" | "bad" | "acc" | "plain"]
+> = {
   sent: ["Sent", "ok"],
   waiting: ["Waiting", "warn"],
   failed: ["Failed", "bad"],
@@ -408,7 +531,13 @@ const STATUS: Record<string, [string, "ok" | "warn" | "bad" | "acc" | "plain"]> 
   running: ["Thinking…", "acc"],
 };
 
-function RunsBlock({ runs, onOpenLog }: { runs: Run[]; onOpenLog: () => void }) {
+function RunsBlock({
+  runs,
+  onOpenLog,
+}: {
+  runs: Run[];
+  onOpenLog: () => void;
+}) {
   if (runs.length === 0) return <span className="muted small">No runs.</span>;
   return (
     <ul className="rowlist">
@@ -430,18 +559,37 @@ function RunsBlock({ runs, onOpenLog }: { runs: Run[]; onOpenLog: () => void }) 
   );
 }
 
-function MessagesBlock({ msgs, onOpenChats }: { msgs: BoardMessage[]; onOpenChats: () => void }) {
-  if (msgs.length === 0) return <span className="muted small">No messages.</span>;
+function MessagesBlock({
+  msgs,
+  onOpenChats,
+}: {
+  msgs: BoardMessage[];
+  onOpenChats: () => void;
+}) {
+  if (msgs.length === 0)
+    return <span className="muted small">No messages.</span>;
   return (
     <ul className="rowlist">
       {msgs.map((m) => (
         <li key={`${m.chatJid}/${m.id}`}>
-          <button type="button" className="rowlist__btn rowlist__btn--msg" onClick={onOpenChats}>
+          <button
+            type="button"
+            className="rowlist__btn rowlist__btn--msg"
+            onClick={onOpenChats}
+          >
             <span className="small">
-              <strong className="strong">{m.fromMe ? "You" : m.senderName || "Someone"}</strong>
-              <span className="muted"> · {when(m.at)}{m.chatName ? ` · ${m.chatName}` : ""}</span>
+              <strong className="strong">
+                {m.fromMe ? "You" : m.senderName || "Someone"}
+              </strong>
+              <span className="muted">
+                {" "}
+                · {when(m.at)}
+                {m.chatName ? ` · ${m.chatName}` : ""}
+              </span>
             </span>
-            <span className="small fg2">{m.text || m.transcript || `[${m.kind}]`}</span>
+            <span className="small fg2">
+              {m.text || m.transcript || `[${m.kind}]`}
+            </span>
           </button>
         </li>
       ))}
@@ -457,20 +605,31 @@ export function cellValue(item: unknown, key: string): string {
     else return "";
   }
   if (v === null || v === undefined) return "";
-  if (typeof v === "number" && key.toLowerCase().endsWith("at") && v > 1e11) return when(v);
+  if (typeof v === "number" && key.toLowerCase().endsWith("at") && v > 1e11)
+    return when(v);
   if (Array.isArray(v)) return v.join(", ");
   if (typeof v === "object") return JSON.stringify(v);
   return String(v);
 }
 
-function TableBlock({ items, columns }: { items: unknown[]; columns: BoardColumn[] }) {
+function TableBlock({
+  items,
+  columns,
+}: {
+  items: unknown[];
+  columns: BoardColumn[];
+}) {
   const cols: BoardColumn[] =
     columns.length > 0
       ? columns
       : Object.entries((items[0] as Record<string, unknown>) ?? {})
           .filter(([, v]) => v === null || typeof v !== "object")
           .slice(0, 5)
-          .map(([k, v]) => ({ key: k, label: k, numeric: typeof v === "number" }));
+          .map(([k, v]) => ({
+            key: k,
+            label: k,
+            numeric: typeof v === "number",
+          }));
   if (items.length === 0) return <span className="muted small">No rows.</span>;
   return (
     <div className="table-wrap">
@@ -478,7 +637,11 @@ function TableBlock({ items, columns }: { items: unknown[]; columns: BoardColumn
         <thead>
           <tr>
             {cols.map((c) => (
-              <th key={c.key} className={c.numeric ? "num" : undefined} scope="col">
+              <th
+                key={c.key}
+                className={c.numeric ? "num" : undefined}
+                scope="col"
+              >
                 {c.label}
               </th>
             ))}
@@ -501,25 +664,46 @@ function TableBlock({ items, columns }: { items: unknown[]; columns: BoardColumn
 }
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const SHADES = ["var(--heat0)", "var(--heat1)", "var(--heat2)", "var(--heat3)", "var(--heat4)"];
+const SHADES = [
+  "var(--heat0)",
+  "var(--heat1)",
+  "var(--heat2)",
+  "var(--heat3)",
+  "var(--heat4)",
+];
 
 function Heatmap({ cells }: { cells: Cell[] }) {
   const grid: number[][] = DAYS.map(() => new Array(24).fill(0));
   cells.forEach((c) => {
-    if (c.day >= 0 && c.day < 7 && c.hour >= 0 && c.hour < 24) grid[c.day][c.hour] += c.count;
+    if (c.day >= 0 && c.day < 7 && c.hour >= 0 && c.hour < 24)
+      grid[c.day][c.hour] += c.count;
   });
   const max = Math.max(1, ...grid.flat());
   const total = grid.flat().reduce((a, b) => a + b, 0);
   let peak = { d: 0, h: 0, v: -1 };
-  grid.forEach((row, d) => row.forEach((v, h) => v > peak.v && (peak = { d, h, v })));
-  const label = total ? `Messages per hour; busiest ${DAYS[peak.d]} around ${peak.h}:00` : "No messages yet";
+  grid.forEach((row, d) =>
+    row.forEach((v, h) => v > peak.v && (peak = { d, h, v })),
+  );
+  const label = total
+    ? `Messages per hour; busiest ${DAYS[peak.d]} around ${peak.h}:00`
+    : "No messages yet";
   return (
     <div className="heat" role="img" aria-label={label}>
       {grid.map((row, d) => (
         <div key={d} className="heat__row">
           <span className="heat__day">{DAYS[d]}</span>
           {row.map((v, h) => (
-            <span key={h} className="heat__cell" style={{ background: SHADES[v === 0 ? 0 : Math.min(4, 1 + Math.floor((v / max) * 3.999))] }} title={`${DAYS[d]} ${h}:00 · ${v}`} />
+            <span
+              key={h}
+              className="heat__cell"
+              style={{
+                background:
+                  SHADES[
+                    v === 0 ? 0 : Math.min(4, 1 + Math.floor((v / max) * 3.999))
+                  ],
+              }}
+              title={`${DAYS[d]} ${h}:00 · ${v}`}
+            />
           ))}
         </div>
       ))}
@@ -541,11 +725,17 @@ function FormBlock({ b, chatId }: { b: BoardBlock; chatId: string }) {
   const [err, setErr] = useState("");
   const form = b.form!;
   const submit = async () => {
-    const lines = (form.questions ?? []).map((q) => `- ${q.label}: ${(answers[q.id] ?? "").replace(/\n/g, ", ") || "(no answer)"}`);
+    const lines = (form.questions ?? []).map(
+      (q) =>
+        `- ${q.label}: ${(answers[q.id] ?? "").replace(/\n/g, ", ") || "(no answer)"}`,
+    );
     setState("sending");
     setErr("");
     try {
-      await api2.send(chatId, `Answers to “${form.title || b.title}”:\n${lines.join("\n")}`);
+      await api2.send(
+        chatId,
+        `Answers to “${form.title || b.title}”:\n${lines.join("\n")}`,
+      );
       setState("sent");
     } catch (e) {
       setErr(errText(e));
@@ -554,12 +744,25 @@ function FormBlock({ b, chatId }: { b: BoardBlock; chatId: string }) {
   };
   return (
     <div className="ask__body ask__body--flat">
-      <FormFields form={form} idPrefix={`bf-${b.id}`} answers={answers} setAnswer={(id, v) => setAnswers((a) => ({ ...a, [id]: v }))} disabled={state !== "idle"} />
+      <FormFields
+        form={form}
+        idPrefix={`bf-${b.id}`}
+        answers={answers}
+        setAnswer={(id, v) => setAnswers((a) => ({ ...a, [id]: v }))}
+        disabled={state !== "idle"}
+      />
       {state === "sent" ? (
-        <span className="ok-text small">Sent to Claude. The board changes when it's done.</span>
+        <span className="ok-text small">
+          Sent to Claude. The board changes when it's done.
+        </span>
       ) : (
         <div>
-          <button type="button" className="btn btn--primary btn--sm" disabled={state === "sending" || !chatId} onClick={submit}>
+          <button
+            type="button"
+            className="btn btn--primary btn--sm"
+            disabled={state === "sending" || !chatId}
+            onClick={submit}
+          >
             Send to Claude
           </button>
         </div>
@@ -571,36 +774,111 @@ function FormBlock({ b, chatId }: { b: BoardBlock; chatId: string }) {
 
 /* ---------- custom HTML ---------- */
 
-function CustomFrame({ b, version, showSource }: { b: BoardBlock; version: number; showSource: boolean }) {
+function CustomFrame({
+  b,
+  version,
+  showSource,
+}: {
+  b: BoardBlock;
+  version: number;
+  showSource: boolean;
+}) {
   const ref = useRef<HTMLIFrameElement>(null);
   const height = Math.max(80, Math.min(1200, b.height || 240));
   // Build the document once per code change; data updates are posted in, so the frame keeps its state.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const srcDoc = useMemo(() => buildSrcdoc({ html: b.html, js: b.js, data: b.data, theme: themeVars() }), [b.html, b.js]);
+  const srcDoc = useMemo(
+    () =>
+      buildSrcdoc({ html: b.html, js: b.js, data: b.data, theme: themeVars() }),
+    [b.html, b.js],
+  );
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
       const win = ref.current?.contentWindow;
       if (!win || e.source !== win) return;
-      const m = e.data as { deputy?: string; id?: number; name?: string; params?: Record<string, unknown> };
-      if (!m || m.deputy !== "query" || typeof m.id !== "number" || typeof m.name !== "string") return;
+      const m = e.data as {
+        deputy?: string;
+        id?: number;
+        name?: string;
+        params?: Record<string, unknown>;
+        action?: string;
+        runId?: string;
+      };
+      if (
+        m &&
+        m.deputy === "action" &&
+        typeof m.id === "number" &&
+        typeof m.runId === "string" &&
+        m.runId
+      ) {
+        const dismiss =
+          m.action === "dismissRun"
+            ? true
+            : m.action === "restoreRun"
+              ? false
+              : null;
+        if (dismiss === null) return;
+        api2
+          .dismissRun(m.runId, dismiss)
+          .then(() =>
+            win.postMessage({ deputy: "result", id: m.id, result: true }, "*"),
+          )
+          .catch((err) =>
+            win.postMessage(
+              { deputy: "result", id: m.id, error: errText(err) },
+              "*",
+            ),
+          );
+        return;
+      }
+      if (
+        !m ||
+        m.deputy !== "query" ||
+        typeof m.id !== "number" ||
+        typeof m.name !== "string"
+      )
+        return;
       api2
-        .runBoardQuery(m.name, (m.params && typeof m.params === "object" ? m.params : {}) as Record<string, unknown>)
-        .then((result) => win.postMessage({ deputy: "result", id: m.id, result }, "*"))
-        .catch((err) => win.postMessage({ deputy: "result", id: m.id, error: errText(err) }, "*"));
+        .runBoardQuery(
+          m.name,
+          (m.params && typeof m.params === "object" ? m.params : {}) as Record<
+            string,
+            unknown
+          >,
+        )
+        .then((result) =>
+          win.postMessage({ deputy: "result", id: m.id, result }, "*"),
+        )
+        .catch((err) =>
+          win.postMessage(
+            { deputy: "result", id: m.id, error: errText(err) },
+            "*",
+          ),
+        );
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
   }, []);
 
   useEffect(() => {
-    ref.current?.contentWindow?.postMessage({ deputy: "update", data: b.data }, "*");
+    ref.current?.contentWindow?.postMessage(
+      { deputy: "update", data: b.data },
+      "*",
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version]);
 
   return (
     <>
-      <iframe ref={ref} className="custom-frame" title={b.title} sandbox="allow-scripts" srcDoc={srcDoc} style={{ height }} />
+      <iframe
+        ref={ref}
+        className="custom-frame"
+        title={b.title}
+        sandbox="allow-scripts"
+        srcDoc={srcDoc}
+        style={{ height }}
+      />
       {showSource && (
         <pre className="md__pre custom-source">
           {b.html}

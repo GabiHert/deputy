@@ -20,7 +20,7 @@
   overflow-y: auto;
 }
 .sidebar__drag {
-  height: 32px;
+  height: 52px; /* clears the window's red/yellow/green buttons */
   flex: none;
   --wails-draggable: drag;
 }
@@ -75,6 +75,10 @@
   color: var(--warn);
   border-radius: 99px;
   padding: 1px 7px;
+}
+.count--unread {
+  background: var(--ok);
+  color: var(--card);
 }
 .subnav {
   display: flex;
@@ -140,6 +144,12 @@
   border-top: 1px solid var(--border);
 }
 .content {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+/* WhatsApp chats before linking: the page scrolls inside the full-height content. */
+.chats-scroll {
   flex: 1;
   min-width: 0;
   overflow-y: auto;
@@ -1173,6 +1183,23 @@
 .models__text {
   display: flex;
   flex-direction: column;
+}
+.update-log summary {
+  cursor: pointer;
+}
+.update-log__out {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid var(--row-line);
+  border-radius: 8px;
+  background: var(--bg);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .progress {
   height: 6px;

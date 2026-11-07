@@ -134,7 +134,7 @@ function RunCard({ run }: { run: Run }) {
   const incoming = run.incoming ?? [];
   const where = run.chatName || "the chat";
 
-  if (run.status === "quiet" && !run.commit) {
+  if (run.status === "quiet" && !run.commit && !run.request) {
     const first = incoming.find((m) => m.text)?.text;
     return (
       <li className="feed__item">
@@ -152,6 +152,13 @@ function RunCard({ run }: { run: Run }) {
     <li className="feed__item">
       <time className="feed__time">{clock(run.at)}</time>
       <div className={run.status === "failed" ? "card run run--failed" : "card run"}>
+        {run.request && (
+          <div className="run__in">
+            <p className="small no-margin">
+              <span className="strong">You asked from Claude Code:</span> {run.request}
+            </p>
+          </div>
+        )}
         {incoming.length > 0 && (
           <div className="run__in">
             {incoming.map((m) => (

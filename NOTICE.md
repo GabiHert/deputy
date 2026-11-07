@@ -49,6 +49,16 @@ SOFTWARE.
 | `frontend/src/components/CodeEditor.tsx` | `frontend/src/components/CodeEditor.tsx` (lines 1-77) | Markdown only; Ledger theme from CSS variables |
 | `frontend/src/components/FileEditor.tsx` | `frontend/src/components/FileTabPanel.tsx` (lines 15-21 and the text-file save flow) | instruction files only; no images, HTML or tabs |
 
+## Code from Notted
+
+Notted is by the same author as Deputy. These Deputy files adapt Notted's self-update code:
+
+| Deputy file | Notted source | Changes |
+|---|---|---|
+| `internal/update/update.go` | `internal/application/service/update.go` | downloads a GitHub tarball instead of pulling a clone; build has network access; deletes the code after the build |
+| `internal/update/install.go`, `internal/update/install.sh` | `internal/integration/install/install.go`, `install.sh` | DEPUTY_* overrides; deletes the staged app after copying it; no permission reset (Deputy asks for none) |
+| `internal/update/stream.go` | `internal/integration/process/stream.go` | a function instead of a type; uses claude.LookPath |
+
 ## Fonts
 
 Newsreader and IBM Plex Sans are bundled under the SIL Open Font License 1.1; see

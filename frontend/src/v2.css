@@ -989,3 +989,247 @@
 .convo__list > * {
   flex-shrink: 0;
 }
+
+/* Finished proposal cards fold to one line; long instructions start clipped. */
+.proposal--folded .proposal__head {
+  padding: 10px 14px;
+  border-bottom: none;
+}
+.proposal--folded .proposal__name {
+  font-size: 16px;
+}
+.proposal--folded .agent-mark {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+}
+.proposal--folded .proposal__foot {
+  padding: 8px 14px;
+}
+.instructions-wrap--clip {
+  max-height: 220px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent);
+  mask-image: linear-gradient(to bottom, #000 70%, transparent);
+}
+.proposal__head--toggle {
+  cursor: pointer;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+.proposal__head--toggle:hover {
+  background: color-mix(in srgb, var(--sel) 50%, transparent);
+}
+.proposal__head--toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.proposal__title {
+  flex: 1;
+  min-width: 0;
+}
+.proposal--folded .proposal__sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.proposal__chev {
+  display: inline-flex;
+  color: var(--fg3-text);
+  transition: transform 0.15s;
+}
+.proposal__chev--up {
+  transform: rotate(180deg);
+}
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.steps__toggle {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  margin: 0;
+}
+.steps__toggle:hover {
+  color: var(--fg);
+}
+.steps__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 20px;
+}
+.steps__list .progress-line {
+  margin: 0;
+}
+.ask__toggle {
+  width: 100%;
+  border: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+.ask__toggle:hover {
+  filter: brightness(0.98);
+}
+.ask__toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.ask__title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ask__summary {
+  font-size: 12.5px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--fg2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The Claude panel collapses to a slim rail on the right, like the sidebar. */
+.claude-rail {
+  flex: 0 0 48px;
+  height: 100%;
+  border-left: 1px solid var(--border);
+  background: var(--side);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  gap: 8px;
+}
+.claude-rail__btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--fg2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.claude-rail__btn:hover {
+  color: var(--fg);
+}
+.claude-rail__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.claude-rail__label {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--fg3-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.claude-rail__label span {
+  writing-mode: vertical-rl;
+  letter-spacing: 0.04em;
+}
+.claude-rail__label:hover {
+  color: var(--fg);
+  background: color-mix(in srgb, var(--sel) 40%, transparent);
+}
+.claude-rail__chev {
+  display: inline-flex;
+  transform: rotate(90deg);
+}
+.claude-rail__chev--out {
+  transform: rotate(-90deg);
+}
+.sendcard__text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--bubble, var(--sel));
+  font-size: 14px;
+}
+
+/* "All direct chats" hint under a chat's agent picker */
+.chat-via { display: block; margin-top: 4px; }
+
+/* Agent page: MCP server access */
+.mcp-access { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; justify-items: start; }
+.mcp-access > .muted { margin: 0; }
+
+/* Sessions list header: New chat, and the button that hides the list */
+.chatlist__row { display: flex; gap: 6px; align-items: stretch; }
+.chatlist__row .chatlist__new { flex: 1; }
+
+/* One soft focus ring on the whole message box, none on the text area inside it. */
+.composer .composer__input:focus-visible { outline: none; }
+.composer:focus-within {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+/* Messages picked in a WhatsApp chat, attached to the next question */
+.quotes { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.quotes__chip {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0;
+  padding: 3px 4px 3px 9px; border-radius: 99px; font-size: 12.5px;
+  background: var(--sel); color: var(--fg); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+}
+.quotes__x { border: 0; background: none; color: var(--fg2); display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; cursor: pointer; }
+.quotes__x:hover { background: color-mix(in srgb, var(--fg) 10%, transparent); }
+
+/* Sessions: per-chat computer access */
+.access { position: relative; }
+.access__pop {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; width: 320px;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 12px; display: flex; flex-direction: column; gap: 10px; text-align: left;
+}
+.access__title { font-size: 13.5px; }
+.access__levels { display: flex; flex-direction: column; gap: 4px; }
+.access__lvl { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border-radius: 7px; cursor: pointer; }
+.access__lvl > span { display: flex; flex-direction: column; gap: 1px; }
+.access__lvl--on { background: var(--sel); }
+.access__lvl input { margin-top: 3px; }
+.access__lvlname { font-weight: 500; font-size: 13px; }
+.access__dirs { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.access__dir { max-width: 100%; display: inline-flex; align-items: center; gap: 5px; }
+.access__acts { justify-content: flex-end; }
+.warn-text { color: var(--warn); }
+
+/* Agent page: computer access */
+.folder-access { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; }
+.folder-access__levels { display: grid; gap: 2px; }
+.folder-access__lvl { display: flex; gap: 8px; align-items: flex-start; padding: 6px 8px; border-radius: 7px; cursor: pointer; }
+.folder-access__lvl > span { display: flex; flex-direction: column; gap: 1px; }
+.folder-access__lvl--on { background: var(--sel); }
+.folder-access__lvl input { margin-top: 3px; }
+.folder-access__name { font-weight: 500; }
+
+/* Updates card: where releases come from and the GitHub token. */
+.update-token { display: flex; flex-direction: column; gap: 8px; }
+.update-token .input { flex: 1; min-width: 0; }

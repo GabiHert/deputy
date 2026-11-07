@@ -6,3 +6,5 @@ frontend/dist/*
 *.sqlite
 *.db
 frontend/package.json.md5
+build/release/
+frontend/src/node_modules/

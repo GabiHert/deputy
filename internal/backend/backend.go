@@ -18,10 +18,12 @@ import (
 	"github.com/GabiHert/deputy/internal/domain"
 	"github.com/GabiHert/deputy/internal/engine"
 	"github.com/GabiHert/deputy/internal/gitrepo"
+	"github.com/GabiHert/deputy/internal/mcpserver"
 	"github.com/GabiHert/deputy/internal/media"
 	"github.com/GabiHert/deputy/internal/port"
 	"github.com/GabiHert/deputy/internal/speech"
 	"github.com/GabiHert/deputy/internal/store"
+	"github.com/GabiHert/deputy/internal/update"
 	"github.com/GabiHert/deputy/internal/whatsapp"
 	"github.com/google/uuid"
 )
@@ -38,6 +40,13 @@ type Deps struct {
 	Emit    func(event string, data any)
 	Version string
 	Login   LoginItem
+	Update  *update.Service
+
+	// The inbox's macOS side.
+	Focused           func() bool                              // a Deputy window has the keyboard focus
+	NotifyChat        func(chat, title, subtitle, body string) // show a message notification
+	ClearNotification func(id string)                          // take a delivered notification away
+	OnUnreadTotal     func(total int)                          // the Dock badge and menu bar
 }
 
 // LoginItem turns "open at login" on or off.
@@ -58,6 +67,10 @@ type Backend struct {
 	claude    app.ClaudeDTO
 	downloads map[domain.Language]*download
 	v2        *v2
+	mcp       *mcpserver.Server
+
+	inboxOnce  sync.Once
+	inboxState *inbox
 }
 
 var _ app.Backend = (*Backend)(nil)
@@ -140,27 +153,27 @@ func (b *Backend) Logout(ctx context.Context) error { return b.d.WA.Logout(ctx) 
 // ---- chats ----
 
 func (b *Backend) ListChats() []app.ChatDTO {
-	owner := map[string]domain.Agent{}
-	for _, a := range b.d.Store.Agents() {
-		for _, c := range a.Chats {
-			owner[c] = a
-		}
-	}
+	router := domain.NewRouter(b.d.Store.Agents())
+	all, hasAll := router.AllDirect()
 	chats := b.d.Store.Chats()
 	out := make([]app.ChatDTO, 0, len(chats))
 	for _, c := range chats {
 		d := app.ChatDTO{JID: c.JID, Name: c.Name, IsGroup: c.IsGroup, Members: c.Members, LastText: c.LastText, LastAt: ms(c.LastAt)}
-		if a, ok := owner[c.JID]; ok {
-			d.AgentID, d.AgentName, d.Mode = a.ID, a.Name, string(a.Mode)
+		if a, viaAll, ok := router.Owner(c.JID); ok {
+			d.AgentID, d.AgentName, d.Mode, d.ViaAll = a.ID, a.Name, string(a.Mode), viaAll
+		} else if hasAll && domain.IsDirect(c.JID) && all.Skips(c.JID) {
+			d.Skipped = true
 		}
 		out = append(out, d)
 	}
 	return out
 }
 
-// AssignChat gives jid to agentID, taking it from any other agent. "" leaves it without an agent.
+// AssignChat gives jid to agentID, taking it from any other agent. "" leaves it without an agent,
+// which for a direct chat also tells the all-direct agent to skip it.
 func (b *Backend) AssignChat(jid, agentID string) error {
 	found := agentID == ""
+	direct := domain.IsDirect(jid)
 	for _, a := range b.d.Store.Agents() {
 		keep := a.Chats[:0:0]
 		for _, c := range a.Chats {
@@ -168,12 +181,22 @@ func (b *Backend) AssignChat(jid, agentID string) error {
 				keep = append(keep, c)
 			}
 		}
-		if a.ID == agentID {
-			keep = append(keep, jid)
-			found = true
+		except := a.Except
+		if a.AllDirect && direct {
+			except = without(a.Except, jid)
+			if agentID == "" {
+				except = append(except, jid)
+			}
 		}
-		if len(keep) != len(a.Chats) || a.ID == agentID {
-			a.Chats = keep
+		if a.ID == agentID {
+			found = true
+			// The all-direct agent already has a direct chat once it stops skipping it.
+			if !(a.AllDirect && direct) {
+				keep = append(keep, jid)
+			}
+		}
+		if len(keep) != len(a.Chats) || a.ID == agentID || len(except) != len(a.Except) {
+			a.Chats, a.Except = keep, except
 			if err := b.d.Store.SaveAgent(a); err != nil {
 				return err
 			}
@@ -187,11 +210,23 @@ func (b *Backend) AssignChat(jid, agentID string) error {
 	return nil
 }
 
+func without(list []string, v string) []string {
+	out := make([]string, 0, len(list))
+	for _, x := range list {
+		if x != v {
+			out = append(out, x)
+		}
+	}
+	return out
+}
+
 // ---- agents ----
 
 func (b *Backend) toDTO(a domain.Agent, full bool) app.AgentDTO {
 	d := app.AgentDTO{
 		ID: a.ID, Name: a.Name, Enabled: a.Enabled, RepoPath: tilde(a.RepoPath), Chats: append([]string{}, a.Chats...),
+		AllDirect: a.AllDirect, Except: append([]string{}, a.Except...), AnswerMe: a.AnswerMe, MCP: append([]string{}, a.MCP...),
+		FolderAccess: a.FolderAccess, Folders: append([]string{}, a.Folders...),
 		Mode: string(a.Mode), Trigger: string(a.Trigger), WaitSeconds: a.WaitSeconds, MaxPerHour: a.MaxPerHour,
 		Prefix: a.Prefix, Push: a.Push, ReadImages: a.ReadImages, TranscribeVoice: a.TranscribeVoice,
 		SendImages: a.SendImages, VoiceReplies: a.VoiceReplies, Web: a.Web, Bash: a.Bash, Model: a.Model,
@@ -294,6 +329,31 @@ func (b *Backend) SaveAgent(d app.AgentDTO) (app.AgentDTO, error) {
 	a.ReadImages, a.TranscribeVoice, a.SendImages, a.VoiceReplies = d.ReadImages, d.TranscribeVoice, d.SendImages, d.VoiceReplies
 	a.Web, a.Bash, a.Model, a.Language = d.Web, d.Bash, d.Model, lang
 	a.Chats = dedupe(d.Chats)
+	a.AllDirect, a.AnswerMe, a.MCP = d.AllDirect, d.AnswerMe, dedupe(d.MCP)
+	switch d.FolderAccess {
+	case "", "read", "edit":
+	default:
+		return d, fmt.Errorf("unknown folder access %q", d.FolderAccess)
+	}
+	a.FolderAccess, a.Folders = d.FolderAccess, nil
+	for _, f := range dedupe(d.Folders) {
+		f = expand(strings.TrimSpace(f))
+		if st, err := os.Stat(f); err != nil || !st.IsDir() || !filepath.IsAbs(f) {
+			return d, fmt.Errorf("%s is not a folder on this Mac.", f)
+		}
+		a.Folders = append(a.Folders, filepath.Clean(f))
+	}
+	if a.FolderAccess != "" && len(a.Folders) == 0 {
+		return d, errors.New("Pick at least one folder for computer access, or turn it off.")
+	}
+	a.Except = nil
+	if a.AllDirect {
+		for _, c := range dedupe(d.Except) {
+			if domain.IsDirect(c) {
+				a.Except = append(a.Except, c)
+			}
+		}
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
@@ -322,8 +382,13 @@ func (b *Backend) SaveAgent(d app.AgentDTO) (app.AgentDTO, error) {
 				keep = append(keep, c)
 			}
 		}
-		if len(keep) != len(other.Chats) {
+		// Only one agent can have all direct chats.
+		dropAll := a.AllDirect && other.AllDirect
+		if len(keep) != len(other.Chats) || dropAll {
 			other.Chats = keep
+			if dropAll {
+				other.AllDirect, other.Except = false, nil
+			}
 			_ = b.d.Store.SaveAgent(other)
 		}
 	}
@@ -386,10 +451,16 @@ func (b *Backend) runDTO(r domain.Run, agents map[string]domain.Agent) app.RunDT
 	}
 	chat, _ := b.d.Store.Chat(r.ChatJID)
 	d := app.RunDTO{ID: r.ID, At: ms(r.At), AgentID: r.AgentID, AgentName: name, ChatJID: r.ChatJID, ChatName: chat.Name,
-		IsGroup: chat.IsGroup, Status: string(r.Status), Reply: r.Reply, Voice: r.Voice, Note: r.Note, Commit: r.Commit,
+		IsGroup: chat.IsGroup, Status: string(r.Status), Reply: r.Reply, Voice: r.Voice, Note: r.Note, Request: r.Request, Commit: r.Commit,
 		Files: append([]string{}, r.Files...), Error: r.Error, SentAt: ms(r.SentAt), Incoming: []app.MessageDTO{}, Images: []app.AttachmentDTO{}}
 	if d.ChatName == "" {
 		d.ChatName = "a chat"
+	}
+	if !r.DismissedAt.IsZero() {
+		d.DismissedAt = ms(r.DismissedAt)
+	}
+	if t := b.d.Store.LastFromMe(r.ChatJID, r.At); !t.IsZero() {
+		d.AnsweredAt = ms(t)
 	}
 	for _, id := range r.MessageIDs {
 		m, err := b.d.Store.Message(r.ChatJID, id)
@@ -505,7 +576,12 @@ func (b *Backend) TodayStats() app.StatsDTO {
 
 func (b *Backend) SendDraft(runID, text string) error { return b.d.Engine.SendDraft(runID, text) }
 func (b *Backend) DiscardDraft(runID string) error    { return b.d.Engine.DiscardDraft(runID) }
-func (b *Backend) RetryRun(runID string) error        { return b.d.Engine.Retry(runID) }
+
+// DismissRun clears a run from "needs you" lists on the board, or brings it back.
+func (b *Backend) DismissRun(runID string, dismissed bool) error {
+	return b.d.Engine.DismissRun(runID, dismissed)
+}
+func (b *Backend) RetryRun(runID string) error { return b.d.Engine.Retry(runID) }
 
 // ---- settings ----
 
@@ -514,7 +590,7 @@ func (b *Backend) GetSettings() app.SettingsDTO {
 	files, bytes := b.d.Media.Usage()
 	return app.SettingsDTO{
 		Defaults:           app.DefaultsDTO{Mode: string(s.Defaults.Mode), MaxPerHour: s.Defaults.MaxPerHour, WaitSeconds: s.Defaults.WaitSeconds, Prefix: s.Defaults.Prefix},
-		MediaRetentionDays: s.MediaRetentionDays, OpenAtLogin: s.OpenAtLogin, Notify: s.Notify,
+		MediaRetentionDays: s.MediaRetentionDays, OpenAtLogin: s.OpenAtLogin, Notify: s.Notify, MCPEnabled: s.MCPEnabled,
 		MediaDir: tilde(b.d.Media.Dir), MediaBytes: bytes, MediaFiles: files,
 	}
 }
@@ -529,6 +605,7 @@ func (b *Backend) SaveSettings(d app.SettingsDTO) error {
 		Defaults: domain.AgentDefaults{Mode: mode, MaxPerHour: clamp(d.Defaults.MaxPerHour, 0, 1000),
 			WaitSeconds: clamp(d.Defaults.WaitSeconds, 0, 600), Prefix: strings.TrimSpace(d.Defaults.Prefix)},
 		MediaRetentionDays: clamp(d.MediaRetentionDays, 0, 3650), OpenAtLogin: d.OpenAtLogin, Notify: d.Notify,
+		MCPEnabled: d.MCPEnabled,
 	}
 	if s.OpenAtLogin != old.OpenAtLogin && b.d.Login != nil {
 		if err := b.d.Login.Set(s.OpenAtLogin); err != nil {
@@ -540,6 +617,9 @@ func (b *Backend) SaveSettings(d app.SettingsDTO) error {
 	}
 	if s.MediaRetentionDays != old.MediaRetentionDays {
 		go b.d.Media.Prune(s.MediaRetentionDays)
+	}
+	if s.MCPEnabled != old.MCPEnabled && b.mcp != nil {
+		_ = b.mcp.SetEnabled(s.MCPEnabled) // a failure shows in GetMCPStatus
 	}
 	return nil
 }

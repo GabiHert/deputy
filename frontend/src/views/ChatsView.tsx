@@ -1,20 +1,39 @@
-import { useEffect, useMemo, useState } from "react";
-import { api, errText, on, type Agent, type Chat, type Status } from "../api";
-import { initials, plural, secondsLeft, when } from "../format";
-import { Confirm, Icon, Pill, SrLabel } from "../components/ui";
+import { useEffect, useState } from "react";
+import { api, errText, type Agent, type Status } from "../api";
+import { secondsLeft } from "../format";
+import { Icon } from "../components/ui";
+import { Inbox } from "./inbox/Inbox";
 
+/** ChatsView is the WhatsApp chats page: linking WhatsApp first, then the inbox. */
 export function ChatsView({
   status,
-  setStatus,
   agents,
+  open,
+  onOpenAgent,
+  onNewAgent,
 }: {
   status: Status | null;
-  setStatus: (s: Status) => void;
   agents: Agent[];
+  /** a chat to open (notification click or menu bar) */
+  open: { jid: string; n: number } | null;
+  onOpenAgent: (id: string) => void;
+  onNewAgent: () => void;
 }) {
-  if (!status) return <div className="page"><p className="muted">Starting Deputy…</p></div>;
-  if (status.whatsapp.state !== "connected") return <ConnectScreen status={status} />;
-  return <ChatTable status={status} setStatus={setStatus} agents={agents} />;
+  if (!status)
+    return (
+      <div className="chats-scroll">
+        <div className="page">
+          <p className="muted">Starting Deputy…</p>
+        </div>
+      </div>
+    );
+  if (status.whatsapp.state !== "connected")
+    return (
+      <div className="chats-scroll">
+        <ConnectScreen status={status} />
+      </div>
+    );
+  return <Inbox agents={agents} open={open} onOpenAgent={onOpenAgent} onNewAgent={onNewAgent} />;
 }
 
 /* ---------- Connect ---------- */
@@ -93,7 +112,7 @@ function ConnectScreen({ status }: { status: Status }) {
             )}
           </ol>
           <p className="muted small">
-            Deputy stays linked when you quit it. To unlink, use <strong>Log out</strong> in Chats or remove it from Linked devices
+            Deputy stays linked when you quit it. To unlink, use <strong>Log out</strong> in Settings or remove it from Linked devices
             on your phone.
           </p>
           <div className="row">
@@ -196,187 +215,4 @@ function PhoneLink() {
       </button>
     </form>
   );
-}
-
-/* ---------- Chats table ---------- */
-
-type Filter = "all" | "groups" | "direct" | "agent";
-
-function ChatTable({ status, agents }: { status: Status; setStatus: (s: Status) => void; agents: Agent[] }) {
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [q, setQ] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
-  const [confirmLogout, setConfirmLogout] = useState(false);
-  const [err, setErr] = useState("");
-
-  useEffect(() => {
-    const load = () => api.listChats().then(setChats).catch(() => {});
-    load();
-    const offs = [on("chats", load), on("agents", load)];
-    return () => offs.forEach((f) => f());
-  }, []);
-
-  const counts = useMemo(
-    () => ({
-      all: chats.length,
-      groups: chats.filter((c) => c.isGroup).length,
-      direct: chats.filter((c) => !c.isGroup).length,
-      agent: chats.filter((c) => c.agentId).length,
-    }),
-    [chats],
-  );
-  const shown = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return chats.filter((c) => {
-      if (filter === "groups" && !c.isGroup) return false;
-      if (filter === "direct" && c.isGroup) return false;
-      if (filter === "agent" && !c.agentId) return false;
-      return !needle || c.name.toLowerCase().includes(needle) || c.lastText.toLowerCase().includes(needle);
-    });
-  }, [chats, q, filter]);
-
-  const assign = async (jid: string, agentId: string) => {
-    setErr("");
-    setChats((cs) => cs.map((c) => (c.jid === jid ? { ...c, agentId, agentName: agents.find((a) => a.id === agentId)?.name ?? "" } : c)));
-    try {
-      await api.assignChat(jid, agentId);
-    } catch (e) {
-      setErr(errText(e));
-      api.listChats().then(setChats).catch(() => {});
-    }
-  };
-
-  const wa = status.whatsapp;
-  const tabs: { id: Filter; label: string }[] = [
-    { id: "all", label: `All ${counts.all}` },
-    { id: "groups", label: `Groups ${counts.groups}` },
-    { id: "direct", label: `Direct ${counts.direct}` },
-    { id: "agent", label: `With an agent ${counts.agent}` },
-  ];
-
-  return (
-    <div className="page">
-      <header className="page__head page__head--split">
-        <div>
-          <h1>Chats</h1>
-          <p className="lede">Pick which agent handles each chat. Chats without an agent are left alone.</p>
-        </div>
-        <div className="account">
-          <span className="dot dot--ok" />
-          <div className="account__text">
-            <span className="strong small">
-              {wa.pushName ? `${wa.pushName} · ` : ""}
-              {wa.phone}
-            </span>
-            {wa.since > 0 && <span className="muted xsmall">Connected since {when(wa.since)}</span>}
-          </div>
-          <button type="button" className="btn btn--sm" onClick={() => setConfirmLogout(true)}>
-            Log out
-          </button>
-        </div>
-      </header>
-      {confirmLogout && (
-        <Confirm
-          danger
-          text="Log out of WhatsApp? Agents stop until you link again."
-          yes="Log out"
-          onNo={() => setConfirmLogout(false)}
-          onYes={async () => {
-            setConfirmLogout(false);
-            try {
-              await api.logout();
-            } catch (e) {
-              setErr(errText(e));
-            }
-          }}
-        />
-      )}
-      {err && <div className="banner banner--bad">{err}</div>}
-
-      <div className="toolbar">
-        <div className="search">
-          <Icon name="search" size={16} strokeWidth={2} />
-          <SrLabel htmlFor="chat-search">Search chats</SrLabel>
-          <input id="chat-search" type="search" placeholder="Search chats" value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-        <div role="tablist" aria-label="Filter chats" className="tabs">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              role="tab"
-              aria-selected={filter === t.id}
-              className={filter === t.id ? "tabs__tab tabs__tab--on" : "tabs__tab"}
-              onClick={() => setFilter(t.id)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="table card">
-        <div className="table__inner">
-          <div className="table__row table__row--head">
-            <span>Chat</span>
-            <span>Last message</span>
-            <span>Agent</span>
-            <span>Answers</span>
-          </div>
-          {shown.length === 0 && (
-            <div className="table__empty muted">
-              {chats.length === 0 ? "No chats yet. They appear here as soon as someone writes in them." : "No chats match."}
-            </div>
-          )}
-          {shown.map((c) => (
-            <div key={c.jid} className="table__row">
-              <div className="chatcell">
-                <span className={`avatar avatar--${avatarTone(c.jid)}`}>{initials(c.name)}</span>
-                <div className="chatcell__text">
-                  <span className="strong ellipsis">{c.name}</span>
-                  <span className="muted xsmall">{c.isGroup ? `Group${c.members ? ` · ${plural(c.members, "member")}` : ""}` : "Direct"}</span>
-                </div>
-              </div>
-              <div className="chatcell__text">
-                <span className="fg2 ellipsis">{c.lastText || "—"}</span>
-                <span className="muted xsmall tabular">{when(c.lastAt)}</span>
-              </div>
-              <div>
-                <SrLabel htmlFor={`agent-${c.jid}`}>{`Agent for ${c.name}`}</SrLabel>
-                <select
-                  id={`agent-${c.jid}`}
-                  className={c.agentId ? "select select--on" : "select"}
-                  value={c.agentId}
-                  onChange={(e) => assign(c.jid, e.target.value)}
-                >
-                  <option value="">No agent</option>
-                  {agents.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name || "Untitled agent"}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>{modePill(c, agents)}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <p className="muted small">Showing chats with messages since you linked Deputy. Older chats appear as soon as someone writes in them.</p>
-    </div>
-  );
-}
-
-function modePill(c: Chat, agents: Agent[]) {
-  if (!c.agentId) return <Pill>Ignored</Pill>;
-  const mode = c.mode || agents.find((a) => a.id === c.agentId)?.mode;
-  if (mode === "auto") return <Pill tone="ok">On its own</Pill>;
-  if (mode === "never") return <Pill tone="acc">Only learns</Pill>;
-  return <Pill tone="warn">After I approve</Pill>;
-}
-
-function avatarTone(jid: string): number {
-  let h = 0;
-  for (let i = 0; i < jid.length; i++) h = (h * 31 + jid.charCodeAt(i)) | 0;
-  return Math.abs(h) % 5;
 }

@@ -29,6 +29,13 @@ type WhatsApp interface {
 	Typing(chat string, on, audio bool)
 	ChatName(jid string) string
 	State() whatsapp.State
+
+	// The owner's own actions from Deputy's inbox.
+	Send(ctx context.Context, chat string, out whatsapp.Outgoing) (whatsapp.Sent, error)
+	React(ctx context.Context, chat, sender, id, emoji string) error
+	Revoke(ctx context.Context, chat, id string) error
+	EditText(ctx context.Context, chat, id, text string) error
+	MarkRead(chat, sender string, ids []string)
 }
 
 // Runner runs an agent.
@@ -48,6 +55,13 @@ type Deps struct {
 	OnRun       func(domain.Run)         // a run was created or changed
 	OnChats     func()                   // the chat list changed
 	Notify      func(title, body string) // a reply waits for approval
+
+	// OnMessage reports a stored message: change is "new" for a message that just arrived or was
+	// just sent, "update" for a reaction, edit, deletion, status or media change.
+	OnMessage func(m domain.Message, change string)
+	OnUnread  func(chat string)                              // a chat's unread count changed
+	OnReceipt func(chat string, ids []string, status string) // the owner's messages got further
+	OnHistory func(kind string, added map[string]int)        // a history sync stored messages, per chat
 }
 
 const (
@@ -68,9 +82,10 @@ type Engine struct {
 	cancel context.CancelFunc
 	sem    chan struct{}
 
-	mu    sync.Mutex
-	chats map[string]*chatState
-	wg    sync.WaitGroup
+	mu     sync.Mutex
+	chats  map[string]*chatState
+	wg     sync.WaitGroup
+	histMu sync.Mutex // one history sync batch at a time
 }
 
 // New returns an engine. Call Close on shutdown.
@@ -94,31 +109,77 @@ func (e *Engine) Close() {
 
 // AgentForChat returns the enabled agent that handles jid.
 func (e *Engine) AgentForChat(jid string) (domain.Agent, bool) {
-	for _, a := range e.d.Store.Agents() {
-		if a.HasChat(jid) {
-			return a, a.Enabled
-		}
-	}
-	return domain.Agent{}, false
+	a, _, ok := domain.NewRouter(e.d.Store.Agents()).Owner(jid)
+	return a, ok && a.Enabled
 }
 
 // HandleIncoming stores a message and, when it is for an agent, schedules a run.
 // It returns quickly; media download and transcription happen in the background.
+// Messages from a history sync are only stored: they never start runs.
 func (e *Engine) HandleIncoming(in whatsapp.Incoming) {
+	m := toMessage(in)
+	if in.History {
+		e.storeHistory(whatsapp.HistoryChat{JID: in.Chat, Messages: []whatsapp.Incoming{in}})
+		return
+	}
+	if old, err := e.d.Store.Message(m.ChatJID, m.ID); err == nil {
+		if old.FromAgent || (old.FromMe && in.FromMe) {
+			return // something Deputy sent, echoed back
+		}
+		// The same message again: the phone resending a view-once Deputy only had a placeholder
+		// for, or a redelivery. Fill in the placeholder; never count or route it twice.
+		if old.ViewOnce && len(old.MediaRef) == 0 && len(m.MediaRef) > 0 {
+			e.updateMessage(m.ChatJID, m.ID, true, func(s *domain.Message) bool {
+				s.Kind, s.Text, s.Mime, s.Seconds, s.FileSize, s.MediaRef = m.Kind, m.Text, m.Mime, m.Seconds, m.FileSize, m.MediaRef
+				return true
+			})
+		}
+		return
+	}
+	_ = e.d.Store.SaveMessage(m)
+	e.touchChat(in, true)
+	e.message(m, "new")
+	e.route(m, in)
+}
+
+func toMessage(in whatsapp.Incoming) domain.Message {
 	m := domain.Message{
 		ID: in.ID, ChatJID: in.Chat, SenderJID: in.Sender, SenderName: in.SenderName, FromMe: in.FromMe, At: in.At,
 		Kind: domain.MsgKind(in.Kind), Text: in.Text, Mime: in.Mime, Seconds: in.Seconds,
 		MentionsMe: in.MentionsMe || in.QuotesMe, QuotedID: in.QuotedID,
+		QuotedSender: in.QuotedSender, QuotedText: in.QuotedText, QuotedKind: domain.MsgKind(in.QuotedKind),
+		Mentions: in.Mentions, FileName: in.FileName, FileSize: in.FileSize, MediaRef: in.MediaRef,
+		History: in.History, Revoked: in.Revoked, Status: domain.MsgStatus(in.Status), ViewOnce: in.ViewOnce,
 	}
 	if in.Kind == "document" && m.Text == "" {
 		m.Text = in.FileName
 	}
-	if old, err := e.d.Store.Message(m.ChatJID, m.ID); err == nil && old.FromAgent {
-		return // our own reply, echoed back
+	if m.FromMe && m.Status == "" {
+		m.Status = domain.StatusSent
 	}
-	_ = e.d.Store.SaveMessage(m)
-	e.touchChat(in)
+	return m
+}
 
+func (e *Engine) message(m domain.Message, change string) {
+	if e.d.OnMessage != nil {
+		e.d.OnMessage(m, change)
+	}
+}
+
+func (e *Engine) unread(chat string) {
+	if e.d.OnUnread != nil {
+		e.d.OnUnread(chat)
+	}
+}
+
+func (e *Engine) chatsChanged() {
+	if e.d.OnChats != nil {
+		e.d.OnChats()
+	}
+}
+
+// route hands a new message to its chat's agent, if any.
+func (e *Engine) route(m domain.Message, in whatsapp.Incoming) {
 	agent, ok := e.AgentForChat(in.Chat)
 	if !ok {
 		return
@@ -133,24 +194,54 @@ func (e *Engine) HandleIncoming(in whatsapp.Incoming) {
 	}()
 }
 
-func (e *Engine) touchChat(in whatsapp.Incoming) {
-	c, err := e.d.Store.Chat(in.Chat)
-	if err != nil || c.Name == "" || c.Name == "Group" {
-		c.JID = in.Chat
-		c.IsGroup = in.IsGroup
-		c.Name = e.d.WA.ChatName(in.Chat)
-		if !in.IsGroup && in.FromMe == false && in.SenderName != "" && strings.HasPrefix(c.Name, "+") {
-			c.Name = in.SenderName
+// touchChat brings a chat's preview up to date with a message. A live message from someone else
+// adds to the unread count; one from the owner means they have read the chat.
+func (e *Engine) touchChat(in whatsapp.Incoming, live bool) {
+	old, err := e.d.Store.Chat(in.Chat)
+	name := ""
+	if err != nil || old.Name == "" || old.Name == "Group" {
+		name = e.d.WA.ChatName(in.Chat)
+		if !in.IsGroup && !in.FromMe && in.SenderName != "" && strings.HasPrefix(name, "+") {
+			name = in.SenderName
 		}
 	}
-	c.LastText = preview(in)
-	if !in.At.Before(c.LastAt) {
-		c.LastAt = in.At
+	c, _ := e.d.Store.UpdateChat(in.Chat, func(c *domain.Chat) {
+		c.JID = in.Chat
+		c.IsGroup = c.IsGroup || in.IsGroup
+		if name != "" && (c.Name == "" || c.Name == "Group" || strings.HasPrefix(c.Name, "+")) {
+			c.Name = name
+		}
+		if !in.At.Before(c.LastAt) {
+			c.LastAt, c.LastText, c.LastID = in.At, preview(in), in.ID
+			c.LastBody, c.LastKind, c.LastFromMe = previewBody(in), domain.MsgKind(in.Kind), in.FromMe
+			c.LastSender = in.SenderName
+			if in.FromMe {
+				c.LastSender = ""
+			}
+		}
+		if live {
+			if in.FromMe {
+				c.Unread = 0
+				if in.At.After(c.ReadAt) {
+					c.ReadAt = in.At
+				}
+			} else if !in.Revoked {
+				c.Unread++
+			}
+		}
+	})
+	e.chatsChanged()
+	if live && c.Unread != old.Unread {
+		e.unread(in.Chat)
 	}
-	_ = e.d.Store.SaveChat(c)
-	if e.d.OnChats != nil {
-		e.d.OnChats()
+}
+
+func previewBody(in whatsapp.Incoming) string {
+	if in.Revoked {
+		return "This message was deleted"
 	}
+	in.IsGroup = false
+	return preview(in)
 }
 
 func preview(in whatsapp.Incoming) string {
@@ -169,6 +260,9 @@ func preview(in whatsapp.Incoming) string {
 	case "sticker":
 		p = "[sticker]"
 	}
+	if in.ViewOnce && p != "" {
+		p = "[view-once " + strings.TrimPrefix(p, "[")
+	}
 	text := strings.TrimSpace(p + in.Text)
 	if in.IsGroup && in.SenderName != "" {
 		who := in.SenderName
@@ -182,7 +276,8 @@ func preview(in whatsapp.Incoming) string {
 
 func (e *Engine) fetchMedia(m *domain.Message, in whatsapp.Incoming, a domain.Agent) {
 	want := (in.Kind == "image" && a.ReadImages) || ((in.Kind == "voice" || in.Kind == "audio") && a.TranscribeVoice)
-	if !want || in.Download == nil {
+	// View-once media is meant to be seen once, by the owner: agents never get a copy.
+	if !want || in.Download == nil || in.ViewOnce {
 		return
 	}
 	ctx, cancel := context.WithTimeout(e.ctx, 2*time.Minute)
@@ -207,12 +302,22 @@ func (e *Engine) fetchMedia(m *domain.Message, in whatsapp.Incoming, a domain.Ag
 			m.Transcript = text
 		}
 	}
-	_ = e.d.Store.SaveMessage(*m)
+	// Only these two fields: reactions or receipts may have changed the message meanwhile.
+	if saved, ok, _ := e.d.Store.UpdateMessage(m.ChatJID, m.ID, func(s *domain.Message) bool {
+		s.MediaPath, s.Transcript = m.MediaPath, m.Transcript
+		return true
+	}); ok {
+		e.message(saved, "update")
+	}
 }
 
 func (e *Engine) triggers(a domain.Agent, in whatsapp.Incoming) bool {
-	if in.FromMe || in.Kind == "sticker" {
+	if in.Kind == "sticker" {
 		return false
+	}
+	if in.FromMe {
+		// Only what the person types on their phone; never what Deputy itself sent.
+		return a.AnswerMe && !in.FromDeputy
 	}
 	if a.Trigger == domain.TriggerAll || !in.IsGroup {
 		return true
@@ -331,12 +436,96 @@ func (e *Engine) Retry(runID string) error {
 	return nil
 }
 
-func (e *Engine) execute(a domain.Agent, r domain.Run) {
+// Request has an agent do what the owner asked, in one chat, and waits for the run to end (or ctx).
+// It runs like any other run (same repo, knowledge, history and prompt) plus the owner's request.
+// The reply is sent at once whatever the agent's mode and hourly limit, unless review is true:
+// then it waits in Activity like a reply to approve. agentID "" means the chat's agent; chatJID
+// "" means the agent's only chat.
+func (e *Engine) Request(ctx context.Context, agentID, chatJID, request string, review bool) (domain.Run, error) {
+	request = strings.TrimSpace(request)
+	if request == "" {
+		return domain.Run{}, errors.New("say what the agent should do")
+	}
+	var a domain.Agent
+	switch {
+	case agentID != "":
+		var err error
+		if a, err = e.d.Store.Agent(agentID); err != nil {
+			return domain.Run{}, errors.New("that agent no longer exists")
+		}
+	case chatJID != "":
+		var ok bool
+		if a, _, ok = domain.NewRouter(e.d.Store.Agents()).Owner(chatJID); !ok {
+			return domain.Run{}, errors.New("no agent handles this chat; name one with agent")
+		}
+	default:
+		return domain.Run{}, errors.New("name the chat, the agent, or both")
+	}
+	if chatJID == "" {
+		if len(a.Chats) != 1 {
+			return domain.Run{}, fmt.Errorf("%s has %d chats; say which one", a.Name, len(a.Chats))
+		}
+		chatJID = a.Chats[0]
+	}
+	if e.ctx.Err() != nil {
+		return domain.Run{}, errors.New("Deputy is quitting")
+	}
+	r := domain.Run{ID: uuid.NewString(), At: time.Now(), AgentID: a.ID, ChatJID: chatJID, Status: domain.RunRunning,
+		Request: request, Review: review}
+	done := make(chan domain.Run, 1)
+	e.wg.Add(1)
+	go func() {
+		defer e.wg.Done()
+		c := e.acquire(chatJID)
+		defer e.release(chatJID, c)
+		done <- e.execute(a, r)
+	}()
+	select {
+	case r := <-done:
+		return r, nil
+	case <-ctx.Done():
+		return r, nil // still running; it ends up in Activity
+	}
+}
+
+// acquire waits until no run is going in chat, then marks it running.
+func (e *Engine) acquire(chat string) *chatState {
+	for {
+		e.mu.Lock()
+		c := e.state(chat)
+		if !c.running || e.ctx.Err() != nil {
+			c.running = true
+			e.mu.Unlock()
+			return c
+		}
+		e.mu.Unlock()
+		select {
+		case <-time.After(200 * time.Millisecond):
+		case <-e.ctx.Done():
+		}
+	}
+}
+
+// release ends a run in chat and starts one for messages that came in meanwhile.
+func (e *Engine) release(chat string, c *chatState) {
+	e.mu.Lock()
+	c.running = false
+	more := len(c.pending) > 0
+	e.mu.Unlock()
+	if more {
+		e.fire(chat)
+	}
+}
+
+// execute runs the agent and saves where the run ended up, which it also returns.
+func (e *Engine) execute(a domain.Agent, r domain.Run) domain.Run {
 	e.save(r)
 	select {
 	case e.sem <- struct{}{}:
 	case <-e.ctx.Done():
-		return
+		r.Status, r.Error = domain.RunFailed, "Deputy quit while this run was going."
+		e.save(r)
+		return r
 	}
 	defer func() { <-e.sem }()
 
@@ -346,19 +535,23 @@ func (e *Engine) execute(a domain.Agent, r domain.Run) {
 	if err := repo.Init(e.ctx); err != nil {
 		r.Status, r.Error = domain.RunFailed, "The knowledge repo is not usable: "+err.Error()
 		e.save(r)
-		return
+		return r
 	}
 	mediaRel := stageMedia(a.RepoPath, history)
 
 	mode := a.Mode
-	if mode != domain.ModeNever {
+	requested := r.Request != ""
+	typing := mode != domain.ModeNever || (requested && !r.Review)
+	if typing {
 		e.d.WA.Typing(r.ChatJID, true, false)
 	}
+	push := e.d.WA.State().PushName
 	res, err := e.d.Runner.Run(e.ctx, claude.AgentRun{
-		Dir: a.RepoPath, SystemPrompt: systemPrompt(a, chat, e.d.WA.State().PushName), Prompt: prompt(chat, history, r.MessageIDs, mediaRel, e.d.WA.State().PushName),
-		Model: a.Model, Web: a.Web, Bash: a.Bash,
+		Dir: a.RepoPath, SystemPrompt: systemPrompt(a, chat, push), Prompt: prompt(chat, history, r.MessageIDs, mediaRel, push, r.Request),
+		Model: a.Model, Web: a.Web, Bash: a.Bash, MCP: a.MCP,
+		Folders: foldersOf(a), ReadOnly: a.FolderAccess == "read",
 	})
-	if mode != domain.ModeNever {
+	if typing {
 		e.d.WA.Typing(r.ChatJID, false, false)
 	}
 	if err != nil {
@@ -368,7 +561,7 @@ func (e *Engine) execute(a domain.Agent, r domain.Run) {
 			r.Status, r.Error = domain.RunFailed, err.Error()
 		}
 		e.save(r)
-		return
+		return r
 	}
 	r.Reply, r.Note = res.Reply, res.Note
 	r.Voice = res.Voice && a.VoiceReplies
@@ -388,25 +581,34 @@ func (e *Engine) execute(a domain.Agent, r domain.Run) {
 		}
 	}
 
+	// The owner's own request is sent whatever the agent's mode and hourly limit, unless they asked to review it.
+	send := false
 	switch {
-	case mode == domain.ModeNever:
+	case mode == domain.ModeNever && !requested:
 		r.Status = domain.RunLearned
 	case r.Reply == "" && len(r.Images) == 0:
 		r.Status = domain.RunQuiet
+	case requested:
+		r.Status = domain.RunWaiting
+		send = !r.Review
 	case mode == domain.ModeApprove:
 		r.Status = domain.RunWaiting
 	case e.overLimit(a):
 		r.Status = domain.RunWaiting
 		r.Note = strings.TrimSpace(fmt.Sprintf("Held for you: %s already sent %d replies in the last hour. %s", a.Name, a.MaxPerHour, r.Note))
 	default:
+		send = true
+	}
+	if send {
 		if err := e.deliver(a, &r); err != nil {
 			r.Status, r.Error = domain.RunFailed, "The reply could not be sent: "+err.Error()
 		}
 	}
 	e.save(r)
-	if r.Status == domain.RunWaiting && e.d.Notify != nil {
+	if r.Status == domain.RunWaiting && e.d.Notify != nil && !requested {
 		e.d.Notify(a.Name+" wants to reply in "+chat.Name, r.Reply)
 	}
+	return r
 }
 
 func (e *Engine) overLimit(a domain.Agent) bool {
@@ -485,8 +687,12 @@ func (e *Engine) deliver(a domain.Agent, r *domain.Run) error {
 		if id == "" {
 			return
 		}
-		_ = e.d.Store.SaveMessage(domain.Message{ID: id, ChatJID: r.ChatJID, SenderName: a.Name, FromMe: true, FromAgent: true,
-			At: time.Now(), Kind: kind, Text: text})
+		m := domain.Message{ID: id, ChatJID: r.ChatJID, SenderName: a.Name, FromMe: true, FromAgent: true,
+			At: time.Now(), Kind: kind, Text: text, Status: domain.StatusSent}
+		_ = e.d.Store.SaveMessage(m)
+		e.touchChat(whatsapp.Incoming{ID: id, Chat: r.ChatJID, IsGroup: !domain.IsDirect(r.ChatJID), SenderName: a.Name,
+			FromMe: true, At: m.At, Kind: string(kind), Text: text}, false)
+		e.message(m, "new")
 	}
 	text := r.Reply
 	if r.Voice && text != "" {
@@ -555,6 +761,59 @@ func (e *Engine) SendDraft(runID, text string) error {
 	}
 	if err := e.deliver(a, &r); err != nil {
 		return fmt.Errorf("the reply could not be sent: %w", err)
+	}
+	e.save(r)
+	return nil
+}
+
+// SendNow sends text to a chat right away, on the person's say-so. With an agent it goes out like
+// one of that agent's replies (its prefix, a sent run in the log); without one it is a plain message.
+func (e *Engine) SendNow(agentID, chatJID, text string) error {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return errors.New("the message is empty")
+	}
+	if agentID == "" {
+		ctx, cancel := context.WithTimeout(e.ctx, time.Minute)
+		defer cancel()
+		id, err := e.d.WA.SendText(ctx, chatJID, text)
+		if err != nil {
+			return fmt.Errorf("the message could not be sent: %w", err)
+		}
+		if id != "" {
+			m := domain.Message{ID: id, ChatJID: chatJID, FromMe: true, At: time.Now(), Kind: domain.KindText, Text: text, Status: domain.StatusSent}
+			_ = e.d.Store.SaveMessage(m)
+			e.touchChat(whatsapp.Incoming{ID: id, Chat: chatJID, IsGroup: !domain.IsDirect(chatJID), FromMe: true, At: m.At,
+				Kind: "text", Text: text}, false)
+			e.message(m, "new")
+		}
+		if e.d.OnChats != nil {
+			e.d.OnChats()
+		}
+		return nil
+	}
+	a, err := e.d.Store.Agent(agentID)
+	if err != nil {
+		return errors.New("that agent no longer exists")
+	}
+	r := domain.Run{ID: uuid.NewString(), At: time.Now(), AgentID: a.ID, ChatJID: chatJID, Reply: text, Note: "Sent from a Deputy chat with Claude."}
+	if err := e.deliver(a, &r); err != nil {
+		return fmt.Errorf("the message could not be sent: %w", err)
+	}
+	e.save(r)
+	return nil
+}
+
+// DismissRun clears a run from the owner's "needs you" lists, or brings it back.
+func (e *Engine) DismissRun(runID string, dismissed bool) error {
+	r, err := e.d.Store.Run(runID)
+	if err != nil {
+		return errors.New("that run no longer exists")
+	}
+	if dismissed {
+		r.DismissedAt = time.Now()
+	} else {
+		r.DismissedAt = time.Time{}
 	}
 	e.save(r)
 	return nil

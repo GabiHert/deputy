@@ -28,6 +28,7 @@ const (
 	PurposeNewAgent = "new-agent"
 	PurposeAgent    = "agent"
 	PurposeBoard    = "board"
+	PurposeAsk      = "ask" // the owner asks a chat's agent something, from that WhatsApp chat
 )
 
 // Chat is a saved Claude chat.
@@ -37,8 +38,9 @@ type Chat struct {
 	Titled    bool      `json:"titled"` // the title was set by the person or from the first message
 	Purpose   string    `json:"purpose"`
 	AgentID   string    `json:"agentId"`
-	SessionID string    `json:"sessionId"` // Claude Code session to resume
-	Started   bool      `json:"started"`   // the session exists in Claude Code
+	ChatJID   string    `json:"chatJid,omitempty"` // the WhatsApp chat an "ask" chat was opened from
+	SessionID string    `json:"sessionId"`         // Claude Code session to resume
+	Started   bool      `json:"started"`           // the session exists in Claude Code
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
@@ -191,7 +193,7 @@ func (s *Service) List() []app.AssistantChatDTO {
 }
 
 func (s *Service) chatDTO(c Chat) app.AssistantChatDTO {
-	d := app.AssistantChatDTO{ID: c.ID, Title: c.Title, Purpose: c.Purpose, AgentID: c.AgentID,
+	d := app.AssistantChatDTO{ID: c.ID, Title: c.Title, Purpose: c.Purpose, AgentID: c.AgentID, ChatJID: c.ChatJID,
 		CreatedAt: c.CreatedAt.UnixMilli(), UpdatedAt: c.UpdatedAt.UnixMilli(), Busy: s.Busy(c.ID)}
 	ms := s.messages(c.ID)
 	for i := len(ms) - 1; i >= 0; i-- {
@@ -238,6 +240,40 @@ func (s *Service) Create(purpose, agentID string) (app.AssistantChatDTO, error) 
 	now := time.Now()
 	c := Chat{ID: uuid.NewString(), Title: title, Purpose: purpose, AgentID: agentID, SessionID: uuid.NewString(),
 		CreatedAt: now, UpdatedAt: now}
+	if err := s.saveChat(c); err != nil {
+		return app.AssistantChatDTO{}, err
+	}
+	return s.chatDTO(c), nil
+}
+
+// AskChat returns the chat where the owner asks agentID about the WhatsApp chat jid, reusing the
+// latest one for that pair so the conversation carries on.
+func (s *Service) AskChat(agentID, jid string) (app.AssistantChatDTO, error) {
+	ag, err := s.d.Store.Agent(agentID)
+	if err != nil {
+		return app.AssistantChatDTO{}, errors.New("that agent no longer exists")
+	}
+	var best *Chat
+	for _, raw := range s.d.Store.AssistantChats() {
+		var c Chat
+		if json.Unmarshal(raw, &c) != nil || c.Purpose != PurposeAsk || c.AgentID != agentID || c.ChatJID != jid {
+			continue
+		}
+		if best == nil || c.UpdatedAt.After(best.UpdatedAt) {
+			cc := c
+			best = &cc
+		}
+	}
+	if best != nil {
+		return s.chatDTO(*best), nil
+	}
+	name := jid
+	if ch, err := s.d.Store.Chat(jid); err == nil && ch.Name != "" {
+		name = ch.Name
+	}
+	now := time.Now()
+	c := Chat{ID: uuid.NewString(), Title: ag.Name + " · " + name, Titled: true, Purpose: PurposeAsk, AgentID: agentID,
+		ChatJID: jid, SessionID: uuid.NewString(), CreatedAt: now, UpdatedAt: now}
 	if err := s.saveChat(c); err != nil {
 		return app.AssistantChatDTO{}, err
 	}
@@ -489,6 +525,8 @@ func cardNoun(kind string) string {
 		return "questions"
 	case "agent":
 		return "agent proposal"
+	case "message":
+		return "message"
 	case "change":
 		return "proposed change"
 	}
@@ -501,6 +539,8 @@ func cardPreview(c app.CardDTO) string {
 		return "Proposed agent " + c.Agent.Name
 	case c.Change != nil:
 		return "Proposed a change to " + c.Change.AgentName
+	case c.Message != nil:
+		return "Message for " + c.Message.ChatName
 	case c.Ask != nil:
 		return "Asked " + fmt.Sprint(len(c.Ask.Questions)) + " questions"
 	}

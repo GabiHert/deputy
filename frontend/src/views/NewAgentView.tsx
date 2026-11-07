@@ -1,10 +1,32 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api2, useAssistantChats, useChatMessages } from "../api";
 import { Conversation } from "../components/Assistant";
 
 /** NewAgentView creates an agent by chatting with Claude, which reads the chats and writes the agent. */
+const DRAFT = "deputy.newAgentDraft";
+
+/** The draft is the new-agent chat in progress, kept so leaving the page doesn't lose it. */
+const draft = {
+  get: () => localStorage.getItem(DRAFT) ?? "",
+  set: (id: string) => (id ? localStorage.setItem(DRAFT, id) : localStorage.removeItem(DRAFT)),
+};
+
 export function NewAgentView({ onOpenAgent, onCreated }: { onOpenAgent: (id: string) => void; onCreated: () => void }) {
-  const [chatId, setChatId] = useState("");
+  const [chatId, setChatId] = useState(draft.get);
+
+  useEffect(() => {
+    const id = draft.get();
+    if (!id) return;
+    api2
+      .listChats()
+      .then((cs) => {
+        if (!cs.some((c) => c.id === id)) {
+          draft.set("");
+          setChatId("");
+        }
+      })
+      .catch(() => {});
+  }, []);
   const [chats, reloadChats] = useAssistantChats();
   const [msgs] = useChatMessages(chatId);
   const chat = chats.find((c) => c.id === chatId) ?? null;
@@ -25,6 +47,17 @@ export function NewAgentView({ onOpenAgent, onCreated }: { onOpenAgent: (id: str
           <div className="muted small">A chat with Claude. It reads your chats and writes the agent for you.</div>
         </div>
         <div className="row row--tight" aria-label="Progress">
+          {chatId && msgs.length > 0 && (
+            <button
+              type="button" className="btn btn--sm"
+              onClick={() => {
+                draft.set("");
+                setChatId("");
+              }}
+            >
+              Start over
+            </button>
+          )}
           {pill(0, "Describe")}
           {pill(1, "Review")}
           {pill(2, "Running")}
@@ -35,10 +68,14 @@ export function NewAgentView({ onOpenAgent, onCreated }: { onOpenAgent: (id: str
         chat={chat}
         wide
         onOpenAgent={onOpenAgent}
-        onAgentCreated={() => onCreated()}
+        onAgentCreated={() => {
+          draft.set("");
+          onCreated();
+        }}
         ensureChat={async () => {
           const c = await api2.newChat("new-agent", "");
           reloadChats();
+          draft.set(c.id);
           setChatId(c.id);
           return c.id;
         }}

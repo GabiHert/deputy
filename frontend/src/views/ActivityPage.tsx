@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { useAssistantChats, type Agent } from "../api";
-import { ClaudePanel } from "../components/Assistant";
+import { type Agent } from "../api";
+import { SessionsAside } from "../components/SessionsAside";
 import { ActivityView } from "./ActivityView";
 import { BoardView } from "./BoardView";
+
+const PANEL = "deputy.claudePanel";
 
 /** ActivityPage is the board (or the log) with the Claude chats beside it. */
 export function ActivityPage({
@@ -17,24 +19,47 @@ export function ActivityPage({
   onNewAgent: () => void;
 }) {
   const [tab, setTab] = useState<"board" | "log">("board");
-  const [chats, reloadChats] = useAssistantChats();
   return (
     <div className="activity2">
       <div className="activity2__main">
         <header className="activity2__head">
           <h1 className="h1">Activity</h1>
           <div role="tablist" aria-label="Activity view" className="tabs">
-            <button type="button" role="tab" aria-selected={tab === "board"} className={tab === "board" ? "tabs__tab tabs__tab--on" : "tabs__tab"} onClick={() => setTab("board")}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "board"}
+              className={
+                tab === "board" ? "tabs__tab tabs__tab--on" : "tabs__tab"
+              }
+              onClick={() => setTab("board")}
+            >
               Board
             </button>
-            <button type="button" role="tab" aria-selected={tab === "log"} className={tab === "log" ? "tabs__tab tabs__tab--on" : "tabs__tab"} onClick={() => setTab("log")}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === "log"}
+              className={
+                tab === "log" ? "tabs__tab tabs__tab--on" : "tabs__tab"
+              }
+              onClick={() => setTab("log")}
+            >
               Log
             </button>
           </div>
         </header>
-        {tab === "board" ? <BoardView onOpenAgent={onOpenAgent} onOpenChats={onOpenChats} onOpenLog={() => setTab("log")} /> : <ActivityView agents={agents} embedded />}
+        {tab === "board" ? (
+          <BoardView
+            onOpenAgent={onOpenAgent}
+            onOpenChats={onOpenChats}
+            onOpenLog={() => setTab("log")}
+          />
+        ) : (
+          <ActivityView agents={agents} embedded />
+        )}
       </div>
-      <ClaudePanel chats={chats} reloadChats={reloadChats} onOpenAgent={onOpenAgent} onNewAgent={onNewAgent} />
+      <SessionsAside storageKey={PANEL} onOpenAgent={onOpenAgent} onNewAgent={onNewAgent} />
     </div>
   );
 }

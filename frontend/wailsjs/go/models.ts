@@ -27,6 +27,12 @@ export namespace app {
 	    repoPath: string;
 	    instructions: string;
 	    chats: string[];
+	    allDirect: boolean;
+	    except: string[];
+	    answerMe: boolean;
+	    mcp: string[];
+	    folderAccess: string;
+	    folders: string[];
 	    mode: string;
 	    trigger: string;
 	    waitSeconds: number;
@@ -55,6 +61,12 @@ export namespace app {
 	        this.repoPath = source["repoPath"];
 	        this.instructions = source["instructions"];
 	        this.chats = source["chats"];
+	        this.allDirect = source["allDirect"];
+	        this.except = source["except"];
+	        this.answerMe = source["answerMe"];
+	        this.mcp = source["mcp"];
+	        this.folderAccess = source["folderAccess"];
+	        this.folders = source["folders"];
 	        this.mode = source["mode"];
 	        this.trigger = source["trigger"];
 	        this.waitSeconds = source["waitSeconds"];
@@ -185,6 +197,7 @@ export namespace app {
 	    title: string;
 	    purpose: string;
 	    agentId: string;
+	    chatJid: string;
 	    preview: string;
 	    createdAt: number;
 	    updatedAt: number;
@@ -200,10 +213,35 @@ export namespace app {
 	        this.title = source["title"];
 	        this.purpose = source["purpose"];
 	        this.agentId = source["agentId"];
+	        this.chatJid = source["chatJid"];
 	        this.preview = source["preview"];
 	        this.createdAt = source["createdAt"];
 	        this.updatedAt = source["updatedAt"];
 	        this.busy = source["busy"];
+	    }
+	}
+	export class MessageProposalDTO {
+	    chatJid: string;
+	    chatName: string;
+	    agentId: string;
+	    agentName: string;
+	    prefix: string;
+	    text: string;
+	    reason: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MessageProposalDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chatJid = source["chatJid"];
+	        this.chatName = source["chatName"];
+	        this.agentId = source["agentId"];
+	        this.agentName = source["agentName"];
+	        this.prefix = source["prefix"];
+	        this.text = source["text"];
+	        this.reason = source["reason"];
 	    }
 	}
 	export class SettingChangeDTO {
@@ -330,6 +368,7 @@ export namespace app {
 	    answers: Record<string, string>;
 	    agent?: AgentProposalDTO;
 	    change?: ChangeProposalDTO;
+	    message?: MessageProposalDTO;
 	
 	    static createFrom(source: any = {}) {
 	        return new CardDTO(source);
@@ -344,6 +383,7 @@ export namespace app {
 	        this.answers = source["answers"];
 	        this.agent = this.convertValues(source["agent"], AgentProposalDTO);
 	        this.change = this.convertValues(source["change"], ChangeProposalDTO);
+	        this.message = this.convertValues(source["message"], MessageProposalDTO);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -582,6 +622,8 @@ export namespace app {
 	    agentId: string;
 	    agentName: string;
 	    mode: string;
+	    viaAll: boolean;
+	    skipped: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new ChatDTO(source);
@@ -598,7 +640,147 @@ export namespace app {
 	        this.agentId = source["agentId"];
 	        this.agentName = source["agentName"];
 	        this.mode = source["mode"];
+	        this.viaAll = source["viaAll"];
+	        this.skipped = source["skipped"];
 	    }
+	}
+	export class MediaDTO {
+	    mime: string;
+	    seconds: number;
+	    fileName: string;
+	    size: number;
+	    url: string;
+	    thumbUrl: string;
+	    downloadable: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new MediaDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mime = source["mime"];
+	        this.seconds = source["seconds"];
+	        this.fileName = source["fileName"];
+	        this.size = source["size"];
+	        this.url = source["url"];
+	        this.thumbUrl = source["thumbUrl"];
+	        this.downloadable = source["downloadable"];
+	    }
+	}
+	export class ReactionDTO {
+	    emoji: string;
+	    count: number;
+	    senders: string[];
+	    fromMe: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ReactionDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.emoji = source["emoji"];
+	        this.count = source["count"];
+	        this.senders = source["senders"];
+	        this.fromMe = source["fromMe"];
+	    }
+	}
+	export class QuotedDTO {
+	    id: string;
+	    senderJid: string;
+	    senderName: string;
+	    fromMe: boolean;
+	    kind: string;
+	    snippet: string;
+	    found: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new QuotedDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.senderJid = source["senderJid"];
+	        this.senderName = source["senderName"];
+	        this.fromMe = source["fromMe"];
+	        this.kind = source["kind"];
+	        this.snippet = source["snippet"];
+	        this.found = source["found"];
+	    }
+	}
+	export class ChatMessageDTO {
+	    id: string;
+	    chatJid: string;
+	    senderJid: string;
+	    senderName: string;
+	    fromMe: boolean;
+	    fromAgent: boolean;
+	    agentName: string;
+	    fromUi: boolean;
+	    at: number;
+	    kind: string;
+	    text: string;
+	    transcript: string;
+	    mentions: string[];
+	    mentionsMe: boolean;
+	    quoted?: QuotedDTO;
+	    reactions: ReactionDTO[];
+	    media?: MediaDTO;
+	    status: string;
+	    edited: boolean;
+	    revoked: boolean;
+	    history: boolean;
+	    viewOnce: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ChatMessageDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.chatJid = source["chatJid"];
+	        this.senderJid = source["senderJid"];
+	        this.senderName = source["senderName"];
+	        this.fromMe = source["fromMe"];
+	        this.fromAgent = source["fromAgent"];
+	        this.agentName = source["agentName"];
+	        this.fromUi = source["fromUi"];
+	        this.at = source["at"];
+	        this.kind = source["kind"];
+	        this.text = source["text"];
+	        this.transcript = source["transcript"];
+	        this.mentions = source["mentions"];
+	        this.mentionsMe = source["mentionsMe"];
+	        this.quoted = this.convertValues(source["quoted"], QuotedDTO);
+	        this.reactions = this.convertValues(source["reactions"], ReactionDTO);
+	        this.media = this.convertValues(source["media"], MediaDTO);
+	        this.status = source["status"];
+	        this.edited = source["edited"];
+	        this.revoked = source["revoked"];
+	        this.history = source["history"];
+	        this.viewOnce = source["viewOnce"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	
 	export class ClaudeDTO {
@@ -617,6 +799,30 @@ export namespace app {
 	        this.path = source["path"];
 	        this.version = source["version"];
 	        this.error = source["error"];
+	    }
+	}
+	export class ContactDTO {
+	    jid: string;
+	    name: string;
+	    pushName: string;
+	    phone: string;
+	    initials: string;
+	    isGroup: boolean;
+	    hasChat: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContactDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.jid = source["jid"];
+	        this.name = source["name"];
+	        this.pushName = source["pushName"];
+	        this.phone = source["phone"];
+	        this.initials = source["initials"];
+	        this.isGroup = source["isGroup"];
+	        this.hasChat = source["hasChat"];
 	    }
 	}
 	export class DefaultsDTO {
@@ -639,6 +845,117 @@ export namespace app {
 	}
 	
 	
+	export class InboxChatDTO {
+	    jid: string;
+	    name: string;
+	    initials: string;
+	    isGroup: boolean;
+	    members: number;
+	    avatarUrl: string;
+	    lastAt: number;
+	    lastId: string;
+	    lastText: string;
+	    lastKind: string;
+	    lastSender: string;
+	    lastFromMe: boolean;
+	    lastStatus: string;
+	    unread: number;
+	    muted: boolean;
+	    mutedUntil: number;
+	    pinned: boolean;
+	    archived: boolean;
+	    agentId: string;
+	    agentName: string;
+	    disappearing: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new InboxChatDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.jid = source["jid"];
+	        this.name = source["name"];
+	        this.initials = source["initials"];
+	        this.isGroup = source["isGroup"];
+	        this.members = source["members"];
+	        this.avatarUrl = source["avatarUrl"];
+	        this.lastAt = source["lastAt"];
+	        this.lastId = source["lastId"];
+	        this.lastText = source["lastText"];
+	        this.lastKind = source["lastKind"];
+	        this.lastSender = source["lastSender"];
+	        this.lastFromMe = source["lastFromMe"];
+	        this.lastStatus = source["lastStatus"];
+	        this.unread = source["unread"];
+	        this.muted = source["muted"];
+	        this.mutedUntil = source["mutedUntil"];
+	        this.pinned = source["pinned"];
+	        this.archived = source["archived"];
+	        this.agentId = source["agentId"];
+	        this.agentName = source["agentName"];
+	        this.disappearing = source["disappearing"];
+	    }
+	}
+	export class MCPServerDTO {
+	    name: string;
+	    target: string;
+	    status: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MCPServerDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.target = source["target"];
+	        this.status = source["status"];
+	    }
+	}
+	export class MCPStatusDTO {
+	    enabled: boolean;
+	    running: boolean;
+	    url: string;
+	    error: string;
+	    command: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MCPStatusDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enabled = source["enabled"];
+	        this.running = source["running"];
+	        this.url = source["url"];
+	        this.error = source["error"];
+	        this.command = source["command"];
+	    }
+	}
+	
+	export class MemberDTO {
+	    jid: string;
+	    name: string;
+	    phone: string;
+	    users: string[];
+	    me: boolean;
+	    admin: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new MemberDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.jid = source["jid"];
+	        this.name = source["name"];
+	        this.phone = source["phone"];
+	        this.users = source["users"];
+	        this.me = source["me"];
+	        this.admin = source["admin"];
+	    }
+	}
 	export class MessageDTO {
 	    id: string;
 	    at: number;
@@ -669,51 +986,20 @@ export namespace app {
 	        this.mentionsMe = source["mentionsMe"];
 	    }
 	}
-	
-	
-	
-	export class RunDTO {
-	    id: string;
-	    at: number;
-	    agentId: string;
-	    agentName: string;
-	    chatJid: string;
-	    chatName: string;
-	    isGroup: boolean;
-	    status: string;
-	    incoming: MessageDTO[];
-	    reply: string;
-	    images: AttachmentDTO[];
-	    voice: boolean;
-	    note: string;
-	    commit: string;
-	    files: string[];
-	    error: string;
-	    sentAt: number;
+	export class MessagePageDTO {
+	    messages: ChatMessageDTO[];
+	    cursor: string;
+	    hasMore: boolean;
 	
 	    static createFrom(source: any = {}) {
-	        return new RunDTO(source);
+	        return new MessagePageDTO(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.at = source["at"];
-	        this.agentId = source["agentId"];
-	        this.agentName = source["agentName"];
-	        this.chatJid = source["chatJid"];
-	        this.chatName = source["chatName"];
-	        this.isGroup = source["isGroup"];
-	        this.status = source["status"];
-	        this.incoming = this.convertValues(source["incoming"], MessageDTO);
-	        this.reply = source["reply"];
-	        this.images = this.convertValues(source["images"], AttachmentDTO);
-	        this.voice = source["voice"];
-	        this.note = source["note"];
-	        this.commit = source["commit"];
-	        this.files = source["files"];
-	        this.error = source["error"];
-	        this.sentAt = source["sentAt"];
+	        this.messages = this.convertValues(source["messages"], ChatMessageDTO);
+	        this.cursor = source["cursor"];
+	        this.hasMore = source["hasMore"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -735,11 +1021,186 @@ export namespace app {
 		}
 	}
 	
+	
+	
+	
+	
+	
+	export class RunDTO {
+	    id: string;
+	    at: number;
+	    agentId: string;
+	    agentName: string;
+	    chatJid: string;
+	    chatName: string;
+	    isGroup: boolean;
+	    status: string;
+	    incoming: MessageDTO[];
+	    reply: string;
+	    images: AttachmentDTO[];
+	    voice: boolean;
+	    note: string;
+	    request: string;
+	    commit: string;
+	    files: string[];
+	    error: string;
+	    sentAt: number;
+	    answeredAt: number;
+	    dismissedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new RunDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.at = source["at"];
+	        this.agentId = source["agentId"];
+	        this.agentName = source["agentName"];
+	        this.chatJid = source["chatJid"];
+	        this.chatName = source["chatName"];
+	        this.isGroup = source["isGroup"];
+	        this.status = source["status"];
+	        this.incoming = this.convertValues(source["incoming"], MessageDTO);
+	        this.reply = source["reply"];
+	        this.images = this.convertValues(source["images"], AttachmentDTO);
+	        this.voice = source["voice"];
+	        this.note = source["note"];
+	        this.request = source["request"];
+	        this.commit = source["commit"];
+	        this.files = source["files"];
+	        this.error = source["error"];
+	        this.sentAt = source["sentAt"];
+	        this.answeredAt = source["answeredAt"];
+	        this.dismissedAt = source["dismissedAt"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SearchHitDTO {
+	    chatJid: string;
+	    chatName: string;
+	    isGroup: boolean;
+	    message: ChatMessageDTO;
+	
+	    static createFrom(source: any = {}) {
+	        return new SearchHitDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chatJid = source["chatJid"];
+	        this.chatName = source["chatName"];
+	        this.isGroup = source["isGroup"];
+	        this.message = this.convertValues(source["message"], ChatMessageDTO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SendFileDTO {
+	    chat: string;
+	    path: string;
+	    dataBase64: string;
+	    fileName: string;
+	    mime: string;
+	    caption: string;
+	    quotedId: string;
+	    kind: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SendFileDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chat = source["chat"];
+	        this.path = source["path"];
+	        this.dataBase64 = source["dataBase64"];
+	        this.fileName = source["fileName"];
+	        this.mime = source["mime"];
+	        this.caption = source["caption"];
+	        this.quotedId = source["quotedId"];
+	        this.kind = source["kind"];
+	    }
+	}
+	export class SendTextDTO {
+	    chat: string;
+	    text: string;
+	    quotedId: string;
+	    mentions: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new SendTextDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chat = source["chat"];
+	        this.text = source["text"];
+	        this.quotedId = source["quotedId"];
+	        this.mentions = source["mentions"];
+	    }
+	}
+	export class SendVoiceDTO {
+	    chat: string;
+	    dataBase64: string;
+	    mime: string;
+	    seconds: number;
+	    quotedId: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SendVoiceDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.chat = source["chat"];
+	        this.dataBase64 = source["dataBase64"];
+	        this.mime = source["mime"];
+	        this.seconds = source["seconds"];
+	        this.quotedId = source["quotedId"];
+	    }
+	}
+	
 	export class SettingsDTO {
 	    defaults: DefaultsDTO;
 	    mediaRetentionDays: number;
 	    openAtLogin: boolean;
 	    notify: boolean;
+	    mcpEnabled: boolean;
 	    mediaDir: string;
 	    mediaBytes: number;
 	    mediaFiles: number;
@@ -754,6 +1215,7 @@ export namespace app {
 	        this.mediaRetentionDays = source["mediaRetentionDays"];
 	        this.openAtLogin = source["openAtLogin"];
 	        this.notify = source["notify"];
+	        this.mcpEnabled = source["mcpEnabled"];
 	        this.mediaDir = source["mediaDir"];
 	        this.mediaBytes = source["mediaBytes"];
 	        this.mediaFiles = source["mediaFiles"];
@@ -871,6 +1333,74 @@ export namespace app {
 	        this.claude = this.convertValues(source["claude"], ClaudeDTO);
 	        this.version = source["version"];
 	        this.waiting = source["waiting"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class UpdateReleaseDTO {
+	    tag: string;
+	    name: string;
+	    notes: string;
+	    date: number;
+	    url: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateReleaseDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.tag = source["tag"];
+	        this.name = source["name"];
+	        this.notes = source["notes"];
+	        this.date = source["date"];
+	        this.url = source["url"];
+	    }
+	}
+	export class UpdateStatusDTO {
+	    version: string;
+	    repo: string;
+	    latest?: UpdateReleaseDTO;
+	    upToDate: boolean;
+	    hasToken: boolean;
+	    state: string;
+	    message: string;
+	    lines: string[];
+	    seq: number;
+	    installedApp: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateStatusDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.version = source["version"];
+	        this.repo = source["repo"];
+	        this.latest = this.convertValues(source["latest"], UpdateReleaseDTO);
+	        this.upToDate = source["upToDate"];
+	        this.hasToken = source["hasToken"];
+	        this.state = source["state"];
+	        this.message = source["message"];
+	        this.lines = source["lines"];
+	        this.seq = source["seq"];
+	        this.installedApp = source["installedApp"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

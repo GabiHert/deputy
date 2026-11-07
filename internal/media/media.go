@@ -62,6 +62,34 @@ func (s Store) Save(chat, id, mime string, data []byte) (string, error) {
 	return p, os.WriteFile(p, data, 0o600)
 }
 
+// SaveAs writes a message's file with the given extension (like ".pdf") and returns its path.
+func (s Store) SaveAs(chat, id, ext string, data []byte) (string, error) {
+	ext = unsafe.ReplaceAllString(strings.ToLower(ext), "")
+	if ext == "" || ext == "." || len(ext) > 12 {
+		ext = ".bin"
+	}
+	if !strings.HasPrefix(ext, ".") {
+		ext = "." + ext
+	}
+	dir := filepath.Join(s.Dir, unsafe.ReplaceAllString(chat, "_"))
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", err
+	}
+	p := filepath.Join(dir, unsafe.ReplaceAllString(id, "_")+ext)
+	return p, os.WriteFile(p, data, 0o600)
+}
+
+// ThumbPath is where a message's JPEG preview is kept.
+func (s Store) ThumbPath(chat, id string) string {
+	return filepath.Join(s.Dir, unsafe.ReplaceAllString(chat, "_"), unsafe.ReplaceAllString(id, "_")+".thumb.jpg")
+}
+
+// AvatarPath is where a chat's profile picture is kept. "_avatars" can't clash with a chat
+// folder: those are named after JIDs, which hold an "@" turned into "_" after a number.
+func (s Store) AvatarPath(jid string) string {
+	return filepath.Join(s.Dir, "_avatars", unsafe.ReplaceAllString(jid, "_")+".jpg")
+}
+
 // Rel returns p relative to the media folder, for URLs; "" when p is outside it.
 func (s Store) Rel(p string) string {
 	r, err := filepath.Rel(s.Dir, p)

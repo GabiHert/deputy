@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -18,8 +19,35 @@ import (
 type sent struct{ chat, kind, text string }
 
 type fakeWA struct {
-	mu   sync.Mutex
-	sent []sent
+	mu    sync.Mutex
+	sent  []sent
+	read  map[string][]string // sender -> message IDs marked read
+	seq   int
+	react []string
+}
+
+func (f *fakeWA) Send(_ context.Context, chat string, out whatsapp.Outgoing) (whatsapp.Sent, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.seq++
+	f.sent = append(f.sent, sent{chat, "owner-" + out.Kind, out.Text})
+	return whatsapp.Sent{ID: "UI" + strconv.Itoa(f.seq), At: time.Now()}, nil
+}
+func (f *fakeWA) React(_ context.Context, chat, sender, id, emoji string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.react = append(f.react, sender+"|"+id+"|"+emoji)
+	return nil
+}
+func (f *fakeWA) Revoke(context.Context, string, string) error           { return nil }
+func (f *fakeWA) EditText(context.Context, string, string, string) error { return nil }
+func (f *fakeWA) MarkRead(chat, sender string, ids []string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.read == nil {
+		f.read = map[string][]string{}
+	}
+	f.read[sender] = append(f.read[sender], ids...)
 }
 
 func (f *fakeWA) SendText(_ context.Context, chat, text string) (string, error) {
@@ -187,6 +215,29 @@ func TestQuietAndOwnMessages(t *testing.T) {
 	}
 }
 
+func TestAnswerMe(t *testing.T) {
+	e, st, _, rn, a := setup(t, domain.ModeAuto, domain.TriggerMention)
+	a.AnswerMe = true
+	if err := st.SaveAgent(a); err != nil {
+		t.Fatal(err)
+	}
+	rn.res = claude.AgentResult{Reply: "oi", Note: "answered"}
+	fromDeputy := msg("group1@g.us", "D1", "sent by Deputy", true, false)
+	fromDeputy.FromMe, fromDeputy.FromDeputy = true, true
+	e.HandleIncoming(fromDeputy)
+	time.Sleep(200 * time.Millisecond)
+	if len(rn.prompts) != 0 {
+		t.Fatal("a message Deputy sent started a run")
+	}
+	own := msg("group1@g.us", "O1", "deputy, what's on today?", true, false)
+	own.FromMe = true
+	e.HandleIncoming(own)
+	waitRun(t, e)
+	if len(rn.prompts) != 1 || !strings.Contains(rn.prompts[0], "NEW") {
+		t.Fatalf("the owner's message should start one run, got %d", len(rn.prompts))
+	}
+}
+
 func TestHourlyLimitHoldsReplies(t *testing.T) {
 	e, st, wa, rn, a := setup(t, domain.ModeAuto, domain.TriggerAll)
 	a.MaxPerHour = 1
@@ -232,5 +283,55 @@ func TestRealClaude(t *testing.T) {
 		}
 	case <-time.After(5 * time.Minute):
 		t.Fatal("timeout")
+	}
+}
+
+func TestRequestSendsAtOnceEvenInApproveMode(t *testing.T) {
+	e, st, wa, rn, a := setup(t, domain.ModeApprove, domain.TriggerMention)
+	a.MaxPerHour = 1
+	_ = st.SaveAgent(a)
+	_ = st.SaveRun(domain.Run{ID: "old", At: time.Now(), AgentID: a.ID, ChatJID: "group1@g.us", Status: domain.RunSent})
+	rn.res = claude.AgentResult{Reply: "Gente, o almoço é às 13h", Note: "told the group"}
+	r, err := e.Request(context.Background(), "", "group1@g.us", "tell the group lunch moved to 1pm", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Status != domain.RunSent || r.Request != "tell the group lunch moved to 1pm" {
+		t.Fatalf("run %+v", r)
+	}
+	if got := wa.all(); len(got) != 1 || got[0].text != "🤖 Gente, o almoço é às 13h" {
+		t.Fatalf("sent %+v", got)
+	}
+	p := rn.prompts[0]
+	if !strings.Contains(p, "Gabriel asked you directly") || !strings.Contains(p, "tell the group lunch moved to 1pm") || strings.Contains(p, "Decide whether to reply") {
+		t.Fatalf("prompt:\n%s", p)
+	}
+	if saved, _ := st.Run(r.ID); saved.Request == "" || saved.Status != domain.RunSent {
+		t.Fatalf("saved %+v", saved)
+	}
+}
+
+func TestRequestWithReviewWaits(t *testing.T) {
+	e, _, wa, rn, _ := setup(t, domain.ModeAuto, domain.TriggerMention)
+	rn.res = claude.AgentResult{Reply: "Oi Ana, tudo certo pra domingo?", Note: "asked Ana"}
+	r, err := e.Request(context.Background(), "a1", "5511@s.whatsapp.net", "ask Ana if Sunday is still on", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Status != domain.RunWaiting || len(wa.all()) != 0 {
+		t.Fatalf("status %s sent %+v", r.Status, wa.all())
+	}
+	if err := e.SendDraft(r.ID, ""); err != nil || len(wa.all()) != 1 {
+		t.Fatalf("send draft: %v %+v", err, wa.all())
+	}
+}
+
+func TestRequestNeedsAChat(t *testing.T) {
+	e, _, _, _, _ := setup(t, domain.ModeAuto, domain.TriggerMention)
+	if _, err := e.Request(context.Background(), "a1", "", "do it", false); err == nil {
+		t.Fatal("an agent with two chats needs the chat named")
+	}
+	if _, err := e.Request(context.Background(), "", "999@g.us", "do it", false); err == nil {
+		t.Fatal("a chat without an agent needs the agent named")
 	}
 }

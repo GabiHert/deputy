@@ -31,8 +31,11 @@ function cssValue(v: string): string {
 
 const BRIDGE = `(function(){
 var pending={},n=0,subs=[];
+function act(action,runId){return new Promise(function(res,rej){var id=++n;pending[id]={res:res,rej:rej};parent.postMessage({deputy:"action",id:id,action:action,runId:String(runId||"")},"*");});}
 window.deputy={
 query:function(name,params){return new Promise(function(res,rej){var id=++n;pending[id]={res:res,rej:rej};parent.postMessage({deputy:"query",id:id,name:String(name),params:params||{}},"*");});},
+dismissRun:function(runId){return act("dismissRun",runId);},
+restoreRun:function(runId){return act("restoreRun",runId);},
 onUpdate:function(fn){if(typeof fn==="function")subs.push(fn);}
 };
 window.addEventListener("message",function(e){

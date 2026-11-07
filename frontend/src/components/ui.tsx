@@ -64,6 +64,42 @@ const paths: Record<string, ReactNode> = {
     </>
   ),
   chevron: <path d="m6 9 6 6 6-6" />,
+  reply: <path d="M10 8 5 12l5 4M5 12h9a5 5 0 0 1 5 5v1" />,
+  smile: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8.5 14a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01" />
+    </>
+  ),
+  clip: <path d="m20 11-8 8a5 5 0 0 1-7-7l8-8a3.5 3.5 0 0 1 5 5l-8 8a2 2 0 0 1-3-3l7-7" />,
+  copy: (
+    <>
+      <rect x="9" y="9" width="11" height="11" rx="2" />
+      <path d="M5 15V5a1 1 0 0 1 1-1h9" />
+    </>
+  ),
+  play: <path d="M8 5v14l11-7z" />,
+  file: (
+    <>
+      <path d="M6 3h8l5 5v13H6z" />
+      <path d="M14 3v5h5" />
+    </>
+  ),
+  pin: <path d="M9 4h6l-1 6 3 3H7l3-3zM12 13v7" />,
+  muted: <path d="M11 5 6 9H3v6h3l5 4zM16 9l5 6M21 9l-5 6" />,
+  down: <path d="M12 5v14M6 13l6 6 6-6" />,
+  timer: (
+    <>
+      <circle cx="12" cy="13" r="8" />
+      <path d="M12 9v4l2.5 2.5M10 2h4" />
+    </>
+  ),
+  viewonce: (
+    <>
+      <circle cx="12" cy="12" r="9" strokeDasharray="4 2.2" />
+      <path d="M10.5 9.5 12.5 8v8" />
+    </>
+  ),
 };
 
 export function Icon({ name, size = 18, strokeWidth = 1.8 }: { name: keyof typeof paths | string; size?: number; strokeWidth?: number }) {

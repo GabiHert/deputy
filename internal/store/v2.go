@@ -1,6 +1,7 @@
 package store
 
 import (
+	"database/sql"
 	"encoding/json"
 	"strings"
 	"time"
@@ -172,3 +173,13 @@ func (s *Store) docs(q string, args ...any) [][]byte {
 }
 
 func jsonUnmarshal(s string, v any) error { return json.Unmarshal([]byte(s), v) }
+
+// LastFromMe is when the owner (or one of their agents) last wrote in a chat after since; zero if never.
+func (s *Store) LastFromMe(chat string, since time.Time) time.Time {
+	var at sql.NullInt64
+	_ = s.db.QueryRow(`SELECT MAX(at) FROM messages WHERE chat_jid = ? AND at > ? AND json_extract(data,'$.fromMe') = 1`, chat, since.UnixMilli()).Scan(&at)
+	if !at.Valid {
+		return time.Time{}
+	}
+	return time.UnixMilli(at.Int64)
+}

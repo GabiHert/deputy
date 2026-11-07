@@ -304,3 +304,89 @@ func TestRealClaude(t *testing.T) {
 		t.Fatalf("resume failed, last: %+v", last)
 	}
 }
+
+func TestProposeMessage(t *testing.T) {
+	s, _, _ := setup(t)
+	c, _ := s.Create(PurposeGeneral, "")
+	cs, err := connect(t, s, c.ID, s.tools.token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, isErr := call(t, cs, "propose_message", map[string]any{"chat": "nope@g.us", "text": " ", "agent": "ghost"})
+	if !isErr || !strings.Contains(out, "text is empty") || !strings.Contains(out, "not a known chat") || !strings.Contains(out, "not an agent ID") {
+		t.Fatalf("expected errors: %s", out)
+	}
+	out, isErr = call(t, cs, "propose_message", map[string]any{"chat": "urnas@g.us", "text": "Oi pessoal", "agent": "chk", "reason": "asked"})
+	if isErr || !strings.Contains(out, "Stop here") {
+		t.Fatalf("propose_message: %s", out)
+	}
+	ms := s.Messages(c.ID)
+	last := ms[len(ms)-1]
+	if last.Card == nil || last.Card.Kind != "message" || last.Card.Message.ChatName != "Fraude nas urnas" || last.Card.Message.AgentName != "Checagem" {
+		t.Fatalf("card %+v", last.Card)
+	}
+}
+
+func TestAskChat(t *testing.T) {
+	s, _, _ := setup(t)
+	if _, err := s.AskChat("ghost", "urnas@g.us"); err == nil {
+		t.Fatal("an unknown agent should fail")
+	}
+	c, err := s.AskChat("chk", "urnas@g.us")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Purpose != PurposeAsk || c.ChatJID != "urnas@g.us" || c.Title != "Checagem · Fraude nas urnas" {
+		t.Fatalf("chat %+v", c)
+	}
+	again, _ := s.AskChat("chk", "urnas@g.us")
+	if again.ID != c.ID {
+		t.Fatal("asking again about the same chat should reopen the same side chat")
+	}
+	ch, _ := s.chat(c.ID)
+	p := s.systemPrompt(ch)
+	for _, want := range []string{`speak as "Checagem"`, "read_chat urnas@g.us", "propose_message", "Fraude nas urnas"} {
+		if !strings.Contains(p, want) {
+			t.Errorf("prompt lacks %q", want)
+		}
+	}
+	tools := strings.Join(toolsFor(PurposeAsk), " ")
+	if strings.Contains(tools, "propose_agent") || !strings.Contains(tools, "propose_message") {
+		t.Fatalf("ask tools: %s", tools)
+	}
+}
+
+func TestAgentComputerAccess(t *testing.T) {
+	s, st, _ := setup(t)
+	dir := t.TempDir()
+	c, err := s.AskChat("chk", "urnas@g.us")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ch, _ := s.chat(c.ID)
+	if tools, _ := s.agentAccess(ch); tools != nil || strings.Contains(s.systemPrompt(ch), "computer access") {
+		t.Fatal("no folder access by default")
+	}
+	ag, _ := st.Agent("chk")
+	ag.FolderAccess, ag.Folders = "read", []string{dir}
+	_ = st.SaveAgent(ag)
+	tools, dirs := s.agentAccess(ch)
+	args := strings.Join(s.claudeArgs(runSpec{builtin: tools, dirs: dirs}), " ")
+	if !strings.Contains(args, "--tools Read,Glob,Grep,WebSearch,WebFetch") || !strings.Contains(args, "--add-dir "+dir) || strings.Contains(args, "Edit") {
+		t.Fatalf("read args: %s", args)
+	}
+	if !strings.Contains(s.systemPrompt(ch), "computer access") {
+		t.Fatal("the prompt should mention the access")
+	}
+	ag.FolderAccess, ag.Bash = "edit", true
+	_ = st.SaveAgent(ag)
+	tools, _ = s.agentAccess(ch)
+	if j := strings.Join(tools, ","); !strings.Contains(j, "Edit") || !strings.Contains(j, "Bash") {
+		t.Fatalf("edit tools: %s", j)
+	}
+	general, _ := s.Create(PurposeGeneral, "")
+	gc, _ := s.chat(general.ID)
+	if tools, _ := s.agentAccess(gc); tools != nil {
+		t.Fatal("chats without an agent never get computer access")
+	}
+}

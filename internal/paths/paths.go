@@ -35,3 +35,9 @@ func LockPath() string { return filepath.Join(Home(), "deputy.lock") }
 
 // LogPath is the app log.
 func LogPath() string { return filepath.Join(Home(), "deputy.log") }
+
+// UpdateDir is where Update Deputy downloads, builds and stages the new version.
+func UpdateDir() string { return filepath.Join(Home(), "update") }
+
+// UpdateLogPath is the install script's log from the last update.
+func UpdateLogPath() string { return filepath.Join(Home(), "update.log") }

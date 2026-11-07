@@ -41,7 +41,9 @@ type ChatDTO struct {
 	LastAt    int64  `json:"lastAt"`
 	AgentID   string `json:"agentId"` // "" = no agent
 	AgentName string `json:"agentName"`
-	Mode      string `json:"mode"` // the agent's reply mode, "" without an agent
+	Mode      string `json:"mode"`    // the agent's reply mode, "" without an agent
+	ViaAll    bool   `json:"viaAll"`  // the agent has it through "all direct chats"
+	Skipped   bool   `json:"skipped"` // a direct chat the all-direct agent was told to leave alone
 }
 
 // RepoStatsDTO summarizes an agent's knowledge repo.
@@ -61,6 +63,12 @@ type AgentDTO struct {
 	RepoPath        string       `json:"repoPath"`
 	Instructions    string       `json:"instructions"` // INSTRUCTIONS.md in the repo
 	Chats           []string     `json:"chats"`        // chat JIDs
+	AllDirect       bool         `json:"allDirect"`    // also every direct chat no other agent has
+	Except          []string     `json:"except"`       // direct chats AllDirect leaves alone
+	AnswerMe        bool         `json:"answerMe"`     // the person's own messages start runs too
+	MCP             []string     `json:"mcp"`          // MCP servers it may use, by claude mcp list name
+	FolderAccess    string       `json:"folderAccess"` // "" | "read" | "edit"
+	Folders         []string     `json:"folders"`      // folders on the Mac beyond its repo
 	Mode            string       `json:"mode"`         // "auto" | "approve" | "never"
 	Trigger         string       `json:"trigger"`      // "all" | "mention"
 	WaitSeconds     int          `json:"waitSeconds"`
@@ -114,10 +122,15 @@ type RunDTO struct {
 	Images    []AttachmentDTO `json:"images"`
 	Voice     bool            `json:"voice"`
 	Note      string          `json:"note"`
+	Request   string          `json:"request"` // what the owner asked the agent from Claude Code, "" for a normal run
 	Commit    string          `json:"commit"`
 	Files     []string        `json:"files"`
 	Error     string          `json:"error"`
 	SentAt    int64           `json:"sentAt"`
+	// AnsweredAt is when the owner or an agent last wrote in this chat after the run; 0 if not yet.
+	AnsweredAt int64 `json:"answeredAt"`
+	// DismissedAt is when the owner dismissed it from "needs you" lists; 0 if not.
+	DismissedAt int64 `json:"dismissedAt"`
 }
 
 // StatsDTO is the Today panel in Activity.
@@ -146,6 +159,7 @@ type SettingsDTO struct {
 	MediaRetentionDays int         `json:"mediaRetentionDays"` // 0 keeps media
 	OpenAtLogin        bool        `json:"openAtLogin"`
 	Notify             bool        `json:"notify"`
+	MCPEnabled         bool        `json:"mcpEnabled"` // Claude Code in other projects can use Deputy
 	MediaDir           string      `json:"mediaDir"`   // read only
 	MediaBytes         int64       `json:"mediaBytes"` // read only
 	MediaFiles         int         `json:"mediaFiles"` // read only
@@ -162,4 +176,45 @@ type SpeechModelDTO struct {
 	Total       int64  `json:"total"`
 	Phase       string `json:"phase"` // "download" | "verify" | "extract" | ""
 	Error       string `json:"error"`
+}
+
+// UpdateReleaseDTO is the newest release on GitHub.
+type UpdateReleaseDTO struct {
+	Tag   string `json:"tag"`
+	Name  string `json:"name"`
+	Notes string `json:"notes"`
+	Date  int64  `json:"date"`
+	URL   string `json:"url"`
+}
+
+// UpdateStatusDTO is the Updates card's state.
+type UpdateStatusDTO struct {
+	Version  string            `json:"version"`
+	Repo     string            `json:"repo"`
+	Latest   *UpdateReleaseDTO `json:"latest"` // null until a check succeeds
+	UpToDate bool              `json:"upToDate"`
+	HasToken bool              `json:"hasToken"`
+	// State is "idle", "checking", "downloading", "verifying", "installing" or "failed".
+	State        string   `json:"state"`
+	Message      string   `json:"message"`
+	Lines        []string `json:"lines"`
+	Seq          int      `json:"seq"`
+	InstalledApp string   `json:"installedApp"` // "" when Deputy does not run from an app bundle
+}
+
+// MCPStatusDTO is the "Claude Code in other projects" card.
+type MCPStatusDTO struct {
+	Enabled bool   `json:"enabled"`
+	Running bool   `json:"running"`
+	URL     string `json:"url"`
+	Error   string `json:"error"`
+	// Command adds Deputy to Claude Code by hand. It holds the token: show it only when asked.
+	Command string `json:"command"`
+}
+
+// MCPServerDTO is one of the person's Claude Code MCP servers.
+type MCPServerDTO struct {
+	Name   string `json:"name"`
+	Target string `json:"target"`
+	Status string `json:"status"` // connected | failed | needs auth | pending | other text
 }
