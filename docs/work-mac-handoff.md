@@ -15,7 +15,8 @@ say so.
 
 ## How Deputy updates (already built)
 
-- CI builds Deputy on each `v*` tag and attaches two files to a GitHub Release:
+- `make release` on the personal Mac builds Deputy, tags it and attaches two files to a GitHub
+  Release:
   - `Deputy-vX.Y.Z-darwin-arm64.zip`
   - `SHA256SUMS`
 - The app calls `https://api.github.com/repos/GabiHert/deputy/releases/latest`. It downloads the
@@ -24,8 +25,8 @@ say so.
 - Go's HTTP client trusts the macOS system keychain, so the security agent's CA should be accepted.
 - A GitHub token for the private repo lives in the macOS login keychain, under the service
   "Deputy updates". The person adds it in Deputy → Settings → Updates.
-- **Signing:** releases are signed ad hoc and not notarized until the person adds Apple Developer
-  ID secrets to CI. Once a Developer ID build is installed, the updater refuses updates signed
+- **Signing:** releases are signed ad hoc and not notarized until the person signs `make release`
+  with an Apple Developer ID. Once a Developer ID build is installed, the updater refuses updates signed
   differently.
 
 ## Hard boundaries

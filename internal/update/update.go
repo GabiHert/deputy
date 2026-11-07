@@ -1,5 +1,5 @@
 // Package update replaces Deputy with the newest GitHub Release: it downloads the release zip
-// that CI built, checks it against the release's SHA256SUMS and its code signature, hands the new
+// that make release built and published, checks it against the release's SHA256SUMS and its code signature, hands the new
 // app to a detached install script and quits. The script swaps the apps and rolls back if the new
 // one does not start. Nothing is built on this Mac. Adapted from Notted's UpdateService; see
 // NOTICE.md.

@@ -1,64 +1,66 @@
 #!/usr/bin/env bash
-# Builds a Deputy release into build/release: Deputy-<tag>-darwin-arm64.zip and SHA256SUMS.
-# Usage: scripts/release.sh v1.2.3
-# CI runs it on each v* tag (.github/workflows/release.yml); it also runs on your Mac.
+# Builds and publishes a Deputy release from this Mac. GitHub Actions is not used.
+# Usage: make release              next patch version after the newest tag (v0.2.1 → v0.2.2)
+#        make release V=v0.3.0     a version you choose
 #
-# Signing, from the environment:
-#   DEPUTY_SIGN_IDENTITY   "Developer ID Application: Name (TEAMID)". Unset: ad hoc.
-#   NOTARY_KEY_PATH, NOTARY_KEY_ID, NOTARY_ISSUER
-#                          An App Store Connect API key (.p8) for notarytool. With these and a
-#                          Developer ID, the app is notarized and the ticket stapled.
+# Steps, stopping at the first failure:
+#   1. Checks: on main, nothing uncommitted, in step with origin, the tag and release are new,
+#      gh is signed in as GabiHert.
+#   2. Tests: go vet and go test, tsc and vitest.
+#   3. Build: scripts/build-release.sh (zip + SHA256SUMS; signing from the environment).
+#   4. Tag, push main and the tag, then create the GitHub Release with both files.
+# A failure before step 4 leaves no tag, push or release behind.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-tag="${1:?usage: scripts/release.sh vX.Y.Z}"
-[[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "release: '$tag' is not a vX.Y.Z tag" >&2; exit 1; }
-version="${tag#v}"
-APP=build/bin/Deputy.app
-OUT=build/release
-zip_name="Deputy-$tag-darwin-arm64.zip"
+REPO=GabiHert/deputy
+ACCOUNT=GabiHert
 
 log() { echo "release: $*"; }
+die() {
+  echo "release: $*" >&2
+  exit 1
+}
 
-rm -rf "$OUT"
-mkdir -p "$OUT"
+export GH_TOKEN
+GH_TOKEN="$(gh auth token -u "$ACCOUNT" 2>/dev/null)" || die "gh is not signed in as $ACCOUNT. Run: gh auth login (as $ACCOUNT)"
 
-log "building $tag"
-DEPUTY_SIGN_IDENTITY="" make build VERSION="$tag"
-
-# The bundle's version is the tag, so Finder and macOS show the release.
-plutil -replace CFBundleShortVersionString -string "$version" "$APP/Contents/Info.plist"
-plutil -replace CFBundleVersion -string "$version" "$APP/Contents/Info.plist"
-
-if [ -n "${DEPUTY_SIGN_IDENTITY:-}" ]; then
-  bash scripts/sign-bundle.sh "$APP"
-else
-  log "DEPUTY_SIGN_IDENTITY is not set: this release is signed ad hoc and is not notarized"
-  for lib in "$APP"/Contents/Frameworks/*.dylib; do
-    [ -e "$lib" ] && codesign -f -s - "$lib"
-  done
-  codesign -f -s - "$APP"
+git fetch -q --tags origin main
+latest="$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)"
+tag="${1:-}"
+if [ -z "$tag" ]; then
+  [ -n "$latest" ] || die "there is no vX.Y.Z tag yet; run: make release V=v0.1.0"
+  IFS=. read -r major minor patch <<<"${latest#v}"
+  tag="v$major.$minor.$((patch + 1))"
 fi
-bash scripts/check-bundle.sh "$APP"
+[[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || die "'$tag' is not a vX.Y.Z version"
 
-# ditto keeps the bundle's symlinks, permissions and signature; --keepParent puts Deputy.app at the
-# top of the zip, which is where the updater looks.
-ditto -c -k --keepParent "$APP" "$OUT/$zip_name"
+log "releasing $tag (newest tag: ${latest:-none})"
+[ "$(git branch --show-current)" = main ] || die "switch to main first"
+[ -z "$(git status --porcelain)" ] || die "commit or stash your changes first:
+$(git status --short)"
+[ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] ||
+  git merge-base --is-ancestor origin/main HEAD || die "main is behind origin/main; pull first"
+! git rev-parse -q --verify "refs/tags/$tag" >/dev/null || die "tag $tag already exists"
+! gh release view "$tag" --repo "$REPO" >/dev/null 2>&1 || die "release $tag already exists on GitHub"
 
-if [ -n "${DEPUTY_SIGN_IDENTITY:-}" ] && [ -n "${NOTARY_KEY_PATH:-}" ]; then
-  log "notarizing (this takes a few minutes)"
-  xcrun notarytool submit "$OUT/$zip_name" --key "$NOTARY_KEY_PATH" --key-id "$NOTARY_KEY_ID" \
-    --issuer "$NOTARY_ISSUER" --wait --timeout 30m
-  xcrun stapler staple "$APP"
-  xcrun stapler validate "$APP"
-  spctl --assess --type execute --verbose "$APP"
-  # Zip again so the download carries the stapled ticket and opens offline.
-  rm -f "$OUT/$zip_name"
-  ditto -c -k --keepParent "$APP" "$OUT/$zip_name"
-elif [ -n "${DEPUTY_SIGN_IDENTITY:-}" ]; then
-  log "NOTARY_KEY_PATH is not set: signed with a Developer ID but not notarized; Gatekeeper will refuse it"
+log "testing"
+go vet ./internal/...
+go test ./internal/...
+(cd frontend && npx tsc --noEmit && npx vitest run)
+
+bash scripts/build-release.sh "$tag"
+
+log "tagging and pushing $tag"
+git tag -a "$tag" -m "Deputy $tag"
+git push -q origin main
+git push -q origin "$tag"
+
+notes="Built and signed on the developer's Mac with make release."
+if ! codesign -dvv build/bin/Deputy.app 2>&1 | grep -q '^TeamIdentifier=[A-Z0-9]'; then
+  notes="$notes Signed ad hoc and not notarized."
 fi
-
-(cd "$OUT" && shasum -a 256 "$zip_name" > SHA256SUMS)
-log "done:"
-ls -l "$OUT"
-cat "$OUT/SHA256SUMS"
+prerelease=()
+case "$tag" in *-*) prerelease=(--prerelease) ;; esac
+gh release create "$tag" build/release/* --repo "$REPO" --title "Deputy $tag" --verify-tag \
+  --generate-notes --notes "$notes" ${prerelease[@]+"${prerelease[@]}"}
+log "published https://github.com/$REPO/releases/tag/$tag"

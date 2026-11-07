@@ -1,6 +1,6 @@
 # Build steps adapted from Notted's Makefile (itself from github.com/brienze1/quant, MIT); see NOTICE.md.
 export PATH := $(HOME)/.gvm/pkgsets/go1.26.3/global/bin:$(HOME)/.nvm/versions/node/v24.16.0/bin:$(PATH)
-.PHONY: dev build install release publish test test-go test-fe
+.PHONY: dev build install release test test-go test-fe
 APP := build/bin/Deputy.app
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 
@@ -17,13 +17,10 @@ build:
 install:
 	bash scripts/install.sh
 
-# make release VERSION=v1.2.3 builds build/release (see scripts/release.sh). CI does this on each tag.
+# make release builds Deputy, tags it and publishes a GitHub Release (see scripts/release.sh).
+# make release V=v0.3.0 picks the version; without V it is the next patch after the newest tag.
 release:
-	bash scripts/release.sh $(VERSION)
-
-# make publish VERSION=v1.2.3 uploads build/release to a GitHub Release on that tag, as GabiHert.
-publish:
-	GH_TOKEN="$$(gh auth token -u GabiHert)" gh release create $(VERSION) build/release/* --repo GabiHert/deputy --title "Deputy $(VERSION)" --generate-notes --verify-tag
+	bash scripts/release.sh $(V)
 
 test-go:
 	go vet ./...
