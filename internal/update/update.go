@@ -266,6 +266,9 @@ func (s *Service) preflight() (string, error) {
 	if !ok {
 		return "", fmt.Errorf("%s is not running from an app bundle, so it cannot replace itself. Open %s.app from your Applications folder and update from there.", n, n)
 	}
+	if translocated(inst) {
+		return "", fmt.Errorf("macOS is running %s from a temporary read-only copy, because it was opened from the folder it was downloaded to. Quit %s, drag %s.app into Applications in Finder, then open it from there and update again.", n, n, n)
+	}
 	if _, err := os.Lstat(inst + ".old"); err == nil {
 		return "", fmt.Errorf("A previous update left %s.old. Check that %s opens, delete %s.old, then update again.", inst, n, inst)
 	}
@@ -374,6 +377,11 @@ func (s *Service) fetch(r Release, installed string) (string, error) {
 	s.out("Staged " + staged)
 	return staged, nil
 }
+
+// translocated reports whether macOS App Translocation runs app from a read-only random path.
+// Gatekeeper does this for a quarantined app opened where it was unpacked; moving the app in
+// Finder ends it.
+func translocated(app string) bool { return strings.Contains(app, "/AppTranslocation/") }
 
 // writeFile copies at most limit bytes of r to path.
 func writeFile(path string, r io.Reader, limit int64) error {

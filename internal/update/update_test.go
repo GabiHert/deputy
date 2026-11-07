@@ -315,3 +315,12 @@ func TestUpToDateRelease(t *testing.T) {
 		t.Fatalf("%+v %v", st, err)
 	}
 }
+
+func TestPreflightExplainsAppTranslocation(t *testing.T) {
+	app := "/private/var/folders/6r/x/T/AppTranslocation/0EBE69DF/d/Deputy.app"
+	s := New(Deps{Version: "v0.2.0", AppName: "Deputy", Dir: t.TempDir()})
+	s.executable = func() (string, error) { return app + "/Contents/MacOS/Deputy", nil }
+	if _, err := s.preflight(); err == nil || !strings.Contains(err.Error(), "drag Deputy.app into Applications in Finder") {
+		t.Fatalf("err = %v", err)
+	}
+}

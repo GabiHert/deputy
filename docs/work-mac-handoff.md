@@ -119,13 +119,15 @@ cd ~/Downloads && shasum -a 256 -c SHA256SUMS --ignore-missing
 
 ## Step 3: install and open
 
+Unzip the download (double-click it in Finder), then have the person **drag `Deputy.app` into
+Applications in Finder**, or into `~/Applications` if `/Applications` is not writable. Moving it in
+Finder matters: macOS runs a quarantined app that was not moved from a temporary read-only copy
+("App Translocation"), and from there Deputy cannot update itself.
+
 ```sh
-# /Applications if writable, else ~/Applications. Deputy must be able to write to this folder to update itself.
-mkdir -p ~/Applications
-ditto -x -k ~/Downloads/Deputy-*-darwin-arm64.zip ~/Applications/
-codesign -dvv ~/Applications/Deputy.app 2>&1 | grep -E 'Identifier|TeamIdentifier|Signature'
-spctl --assess --type execute -vv ~/Applications/Deputy.app   # read only: what Gatekeeper thinks
-open ~/Applications/Deputy.app
+codesign -dvv /Applications/Deputy.app 2>&1 | grep -E 'Identifier|TeamIdentifier|Signature'
+spctl --assess --type execute -vv /Applications/Deputy.app   # read only: what Gatekeeper thinks
+open /Applications/Deputy.app
 ```
 
 - If it opens, go to step 4.

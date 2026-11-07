@@ -478,6 +478,12 @@ function UpdatesCard() {
             {latest.name && latest.name !== latest.tag ? ` · ${latest.name}` : ""} · {ago(latest.date)}
           </p>
         ))}
+      {u?.installedApp?.includes("/AppTranslocation/") && (
+        <p className="error-text small no-margin">
+          macOS is running Deputy from a temporary read-only copy, so it can't update itself. Quit Deputy, drag Deputy.app into
+          Applications in Finder, then open it from there.
+        </p>
+      )}
       {u && !u.installedApp && (
         <p className="muted small no-margin">Deputy is not running from an app bundle, so it cannot update itself.</p>
       )}
