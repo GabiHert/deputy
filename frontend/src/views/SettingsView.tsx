@@ -46,7 +46,14 @@ export function SettingsView({ status, setStatus }: { status: Status | null; set
   return (
     <div className="page">
       <header className="page__head page__head--split">
-        <h1>Settings</h1>
+        <div className="row row--tight">
+          <h1>Settings</h1>
+          {status?.version && (
+            <span className="version-pill mono" title="The Deputy version running now">
+              Deputy {status.version}
+            </span>
+          )}
+        </div>
         {savedNote && <span className="ok-text small">{savedNote}</span>}
       </header>
       {err && (

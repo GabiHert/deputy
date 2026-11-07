@@ -1233,3 +1233,14 @@
 /* Updates card: where releases come from and the GitHub token. */
 .update-token { display: flex; flex-direction: column; gap: 8px; }
 .update-token .input { flex: 1; min-width: 0; }
+
+/* The running version, beside the Settings title. */
+.version-pill {
+  font-size: 12px;
+  line-height: 1;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border, rgba(127, 127, 127, 0.3));
+  color: var(--fg2, inherit);
+  white-space: nowrap;
+}
