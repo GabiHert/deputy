@@ -8,7 +8,7 @@ import (
 
 	sherpa "github.com/k2-fsa/sherpa-onnx-go/sherpa_onnx"
 
-	"github.com/GabiHert/deputy/internal/port"
+	"github.com/GabiHert/positron/internal/port"
 )
 
 var _ port.SpeechDetector = (*Detector)(nil)

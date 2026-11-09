@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/domain"
+	"github.com/GabiHert/positron/internal/domain"
 )
 
 func open(t *testing.T) (*Store, string) {

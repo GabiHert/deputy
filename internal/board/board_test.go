@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/app"
+	"github.com/GabiHert/positron/internal/app"
 )
 
 func TestDefaultBoardIsValid(t *testing.T) {

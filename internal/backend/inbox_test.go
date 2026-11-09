@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/store"
+	"github.com/GabiHert/positron/internal/store"
 
-	"github.com/GabiHert/deputy/internal/domain"
+	"github.com/GabiHert/positron/internal/domain"
 )
 
 func TestInitials(t *testing.T) {

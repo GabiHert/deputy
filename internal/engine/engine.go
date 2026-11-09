@@ -12,12 +12,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/claude"
-	"github.com/GabiHert/deputy/internal/domain"
-	"github.com/GabiHert/deputy/internal/gitrepo"
-	"github.com/GabiHert/deputy/internal/media"
-	"github.com/GabiHert/deputy/internal/store"
-	"github.com/GabiHert/deputy/internal/whatsapp"
+	"github.com/GabiHert/positron/internal/claude"
+	"github.com/GabiHert/positron/internal/domain"
+	"github.com/GabiHert/positron/internal/gitrepo"
+	"github.com/GabiHert/positron/internal/media"
+	"github.com/GabiHert/positron/internal/store"
+	"github.com/GabiHert/positron/internal/whatsapp"
 	"github.com/google/uuid"
 )
 

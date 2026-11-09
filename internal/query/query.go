@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/domain"
-	"github.com/GabiHert/deputy/internal/gitrepo"
-	"github.com/GabiHert/deputy/internal/store"
+	"github.com/GabiHert/positron/internal/domain"
+	"github.com/GabiHert/positron/internal/gitrepo"
+	"github.com/GabiHert/positron/internal/store"
 )
 
 // Shapes of query results.

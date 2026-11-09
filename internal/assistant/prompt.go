@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/gitrepo"
-	"github.com/GabiHert/deputy/internal/query"
+	"github.com/GabiHert/positron/internal/gitrepo"
+	"github.com/GabiHert/positron/internal/query"
 )
 
 const baseRules = `You are Claude, inside Deputy, a Mac app where %s lets Claude Code agents answer some of their WhatsApp chats for them.

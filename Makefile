@@ -8,7 +8,7 @@ dev:
 	wails dev
 
 build:
-	MACOSX_DEPLOYMENT_TARGET=14.0 CGO_CFLAGS=-mmacosx-version-min=14.0 CGO_LDFLAGS=-mmacosx-version-min=14.0 wails build -platform darwin/arm64 -ldflags "-X github.com/GabiHert/deputy/internal/run.Version=$(VERSION)"
+	MACOSX_DEPLOYMENT_TARGET=14.0 CGO_CFLAGS=-mmacosx-version-min=14.0 CGO_LDFLAGS=-mmacosx-version-min=14.0 wails build -platform darwin/arm64 -ldflags "-X github.com/GabiHert/positron/internal/run.Version=$(VERSION)"
 	touch frontend/dist/.gitkeep
 	bash scripts/fixup-macos-dylibs.sh $(APP)/Contents/MacOS/Deputy
 	bash scripts/sign-bundle.sh $(APP)

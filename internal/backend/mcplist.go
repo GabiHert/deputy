@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/app"
+	"github.com/GabiHert/positron/internal/app"
 )
 
 var mcpCache struct {

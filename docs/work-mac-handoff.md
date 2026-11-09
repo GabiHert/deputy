@@ -9,7 +9,7 @@ run, and report back. From then on Deputy updates itself.
 Deputy is a macOS app (Go + Wails) that runs Claude Code agents on the person's WhatsApp chats.
 Repo: `GabiHert/deputy` (private). Its personal-Mac session wrote this handoff on 2026-11-06.
 
-**Prerequisite:** a published release at `https://github.com/GabiHert/deputy/releases/latest`.
+**Prerequisite:** a published release at `https://github.com/GabiHert/positron/releases/latest`.
 When this was written, none had been published yet. If there is still none, stop after step 0 and
 say so.
 
@@ -92,7 +92,7 @@ Prefer the browser. Downloads made in the browser carry the quarantine flag, so 
 the app normally.
 
 - If the browser is signed in to GitHub with access to the repo, open
-  `https://github.com/GabiHert/deputy/releases/latest` and download
+  `https://github.com/GabiHert/positron/releases/latest` and download
   `Deputy-<tag>-darwin-arm64.zip` and `SHA256SUMS`.
 - If not, ask the person how they want to get it. Don't pick a route that skips quarantine.
   If they choose the API with their token, mark the zip as downloaded afterwards, so Gatekeeper

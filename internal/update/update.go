@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/app"
+	"github.com/GabiHert/positron/internal/app"
 )
 
 // Status is what the Updates card shows.

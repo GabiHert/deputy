@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/GabiHert/deputy/internal/claude"
+	"github.com/GabiHert/positron/internal/claude"
 )
 
 // IsOggOpus reports whether data is an Ogg Opus stream, what WhatsApp wants for voice notes.

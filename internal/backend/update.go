@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/GabiHert/deputy/internal/app"
-	"github.com/GabiHert/deputy/internal/update"
+	"github.com/GabiHert/positron/internal/app"
+	"github.com/GabiHert/positron/internal/update"
 )
 
 var errNoUpdater = errors.New("Updates are not available in this build.")

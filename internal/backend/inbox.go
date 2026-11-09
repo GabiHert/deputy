@@ -19,11 +19,11 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/GabiHert/deputy/internal/app"
-	"github.com/GabiHert/deputy/internal/domain"
-	"github.com/GabiHert/deputy/internal/media"
-	"github.com/GabiHert/deputy/internal/store"
-	"github.com/GabiHert/deputy/internal/whatsapp"
+	"github.com/GabiHert/positron/internal/app"
+	"github.com/GabiHert/positron/internal/domain"
+	"github.com/GabiHert/positron/internal/media"
+	"github.com/GabiHert/positron/internal/store"
+	"github.com/GabiHert/positron/internal/whatsapp"
 )
 
 // The inbox: Deputy as the owner's own WhatsApp client.

@@ -4,7 +4,7 @@ import (
 	"embed"
 	"log"
 
-	"github.com/GabiHert/deputy/internal/run"
+	"github.com/GabiHert/positron/internal/run"
 )
 
 //go:embed all:frontend/dist

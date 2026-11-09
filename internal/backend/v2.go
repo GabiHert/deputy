@@ -14,13 +14,13 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/GabiHert/deputy/internal/app"
-	"github.com/GabiHert/deputy/internal/assistant"
-	"github.com/GabiHert/deputy/internal/board"
-	"github.com/GabiHert/deputy/internal/domain"
-	"github.com/GabiHert/deputy/internal/gitrepo"
-	"github.com/GabiHert/deputy/internal/paths"
-	"github.com/GabiHert/deputy/internal/query"
+	"github.com/GabiHert/positron/internal/app"
+	"github.com/GabiHert/positron/internal/assistant"
+	"github.com/GabiHert/positron/internal/board"
+	"github.com/GabiHert/positron/internal/domain"
+	"github.com/GabiHert/positron/internal/gitrepo"
+	"github.com/GabiHert/positron/internal/paths"
+	"github.com/GabiHert/positron/internal/query"
 	"golang.org/x/text/unicode/norm"
 )
 

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/domain"
-	"github.com/GabiHert/deputy/internal/store"
+	"github.com/GabiHert/positron/internal/domain"
+	"github.com/GabiHert/positron/internal/store"
 )
 
 func TestParseSince(t *testing.T) {

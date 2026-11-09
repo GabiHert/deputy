@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/domain"
-	"github.com/GabiHert/deputy/internal/store"
-	"github.com/GabiHert/deputy/internal/whatsapp"
+	"github.com/GabiHert/positron/internal/domain"
+	"github.com/GabiHert/positron/internal/store"
+	"github.com/GabiHert/positron/internal/whatsapp"
 )
 
 // This file is the owner's own WhatsApp client: what changes earlier messages (reactions,

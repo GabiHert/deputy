@@ -5,7 +5,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/GabiHert/deputy/internal/app"
+	"github.com/GabiHert/positron/internal/app"
 )
 
 // resolveChat finds a chat by JID, exact name (any case), phone number or a unique part of its

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/domain"
+	"github.com/GabiHert/positron/internal/domain"
 )
 
 // migrations run once each, in order, on top of the base schema; PRAGMA user_version counts them.

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/claude"
+	"github.com/GabiHert/positron/internal/claude"
 )
 
 const (

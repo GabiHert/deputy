@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/domain"
+	"github.com/GabiHert/positron/internal/domain"
 	_ "github.com/mattn/go-sqlite3"
 )
 

@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/app"
+	"github.com/GabiHert/positron/internal/app"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

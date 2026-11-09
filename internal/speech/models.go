@@ -8,8 +8,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/GabiHert/deputy/internal/domain"
-	"github.com/GabiHert/deputy/internal/port"
+	"github.com/GabiHert/positron/internal/domain"
+	"github.com/GabiHert/positron/internal/port"
 )
 
 var _ port.ModelManager = (*ModelManager)(nil)

@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/app"
-	"github.com/GabiHert/deputy/internal/board"
-	"github.com/GabiHert/deputy/internal/domain"
-	"github.com/GabiHert/deputy/internal/query"
-	"github.com/GabiHert/deputy/internal/store"
+	"github.com/GabiHert/positron/internal/app"
+	"github.com/GabiHert/positron/internal/board"
+	"github.com/GabiHert/positron/internal/domain"
+	"github.com/GabiHert/positron/internal/query"
+	"github.com/GabiHert/positron/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

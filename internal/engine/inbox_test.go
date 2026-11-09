@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/claude"
-	"github.com/GabiHert/deputy/internal/domain"
-	"github.com/GabiHert/deputy/internal/whatsapp"
+	"github.com/GabiHert/positron/internal/claude"
+	"github.com/GabiHert/positron/internal/domain"
+	"github.com/GabiHert/positron/internal/whatsapp"
 )
 
 const loneChat = "7777@s.whatsapp.net" // no agent handles it

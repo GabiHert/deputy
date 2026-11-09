@@ -14,10 +14,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/claude"
-	"github.com/GabiHert/deputy/internal/domain"
-	"github.com/GabiHert/deputy/internal/port"
-	"github.com/GabiHert/deputy/internal/wavinfo"
+	"github.com/GabiHert/positron/internal/claude"
+	"github.com/GabiHert/positron/internal/domain"
+	"github.com/GabiHert/positron/internal/port"
+	"github.com/GabiHert/positron/internal/wavinfo"
 )
 
 // Store keeps media files under Dir, one folder per chat.

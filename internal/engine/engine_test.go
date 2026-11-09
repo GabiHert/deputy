@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/claude"
-	"github.com/GabiHert/deputy/internal/domain"
-	"github.com/GabiHert/deputy/internal/store"
-	"github.com/GabiHert/deputy/internal/whatsapp"
+	"github.com/GabiHert/positron/internal/claude"
+	"github.com/GabiHert/positron/internal/domain"
+	"github.com/GabiHert/positron/internal/store"
+	"github.com/GabiHert/positron/internal/whatsapp"
 )
 
 type sent struct{ chat, kind, text string }

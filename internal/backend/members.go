@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/app"
-	"github.com/GabiHert/deputy/internal/domain"
+	"github.com/GabiHert/positron/internal/app"
+	"github.com/GabiHert/positron/internal/domain"
 )
 
 var memberCache sync.Map // chat jid -> membersEntry

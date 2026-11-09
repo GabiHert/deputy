@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/GabiHert/deputy/internal/domain"
+	"github.com/GabiHert/positron/internal/domain"
 )
 
 // TestVoiceRoundTrip makes a voice note like WhatsApp's (Ogg Opus) and decodes it back for the speech engine.

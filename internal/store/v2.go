@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/domain"
+	"github.com/GabiHert/positron/internal/domain"
 )
 
 // ---- key/value ----

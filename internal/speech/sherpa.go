@@ -22,9 +22,9 @@ import (
 
 	sherpa "github.com/k2-fsa/sherpa-onnx-go/sherpa_onnx"
 
-	"github.com/GabiHert/deputy/internal/domain"
-	"github.com/GabiHert/deputy/internal/port"
-	"github.com/GabiHert/deputy/internal/wavinfo"
+	"github.com/GabiHert/positron/internal/domain"
+	"github.com/GabiHert/positron/internal/port"
+	"github.com/GabiHert/positron/internal/wavinfo"
 )
 
 var _ port.SpeechEngine = (*Engine)(nil)

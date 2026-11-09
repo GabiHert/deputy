@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/app"
-	"github.com/GabiHert/deputy/internal/claude"
-	"github.com/GabiHert/deputy/internal/mcpserver"
+	"github.com/GabiHert/positron/internal/app"
+	"github.com/GabiHert/positron/internal/claude"
+	"github.com/GabiHert/positron/internal/mcpserver"
 )
 
 // SetMCP connects the server for Claude Code in other projects and starts it when the setting is on.

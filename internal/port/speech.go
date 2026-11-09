@@ -4,7 +4,7 @@ package port
 import (
 	"context"
 
-	"github.com/GabiHert/deputy/internal/domain"
+	"github.com/GabiHert/positron/internal/domain"
 )
 
 // SpeechSpan is one stretch of speech found by the detector.

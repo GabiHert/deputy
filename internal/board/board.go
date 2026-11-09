@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GabiHert/deputy/internal/app"
-	"github.com/GabiHert/deputy/internal/query"
+	"github.com/GabiHert/positron/internal/app"
+	"github.com/GabiHert/positron/internal/query"
 )
 
 // Layout is the saved board.
