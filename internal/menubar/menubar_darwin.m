@@ -28,32 +28,57 @@ static NSMenuItem *menuItem(NSString *title, NSInteger tag) {
 	return mi;
 }
 
-// logoImage draws Positron's D monogram (a D shaped like a speech bubble, with typing dots) as
-// a template image, from the same 64x64 drawing as the app icon. With replies waiting, the
-// dots become one filled dot so the icon reads differently at a glance.
+// logoImage draws Positron's mark (a chat bubble with typing dots on a tilted orbit, with two
+// particles) as a template image, from the same 64x64 drawing as the app icon. With replies
+// waiting, the dots become one filled dot so the icon reads differently at a glance.
 static NSImage *logoImage(BOOL attention) {
 	NSImage *image = [NSImage imageWithSize:NSMakeSize(18, 18) flipped:YES drawingHandler:^BOOL(NSRect rect) {
 		NSAffineTransform *t = [NSAffineTransform transform];
 		[t scaleBy:18.0 / 64.0];
 		[t concat];
 		[[NSColor blackColor] set];
-		NSBezierPath *d = [NSBezierPath bezierPath];
-		[d moveToPoint:NSMakePoint(15, 11)];
-		[d lineToPoint:NSMakePoint(32, 11)];
-		[d appendBezierPathWithArcWithCenter:NSMakePoint(32, 32) radius:21 startAngle:270 endAngle:90 clockwise:NO];
-		[d lineToPoint:NSMakePoint(23, 53)];
-		[d lineToPoint:NSMakePoint(15, 59)];
-		[d closePath];
-		d.lineWidth = 5.5;
-		d.lineJoinStyle = NSLineJoinStyleRound;
-		[d stroke];
+
+		// The bubble.
+		NSBezierPath *b = [NSBezierPath bezierPath];
+		[b moveToPoint:NSMakePoint(24, 19)];
+		[b appendBezierPathWithArcFromPoint:NSMakePoint(50, 19) toPoint:NSMakePoint(50, 43) radius:5];
+		[b appendBezierPathWithArcFromPoint:NSMakePoint(50, 43) toPoint:NSMakePoint(14, 43) radius:5];
+		[b lineToPoint:NSMakePoint(30, 43)];
+		[b lineToPoint:NSMakePoint(22, 49)];
+		[b lineToPoint:NSMakePoint(22, 43)];
+		[b appendBezierPathWithArcFromPoint:NSMakePoint(14, 43) toPoint:NSMakePoint(14, 19) radius:5];
+		[b appendBezierPathWithArcFromPoint:NSMakePoint(14, 19) toPoint:NSMakePoint(50, 19) radius:5];
+		[b closePath];
+		// The orbit, tilted 24 degrees at half strength, is clipped away inside the bubble.
+		[NSGraphicsContext saveGraphicsState];
+		NSBezierPath *outside = [NSBezierPath bezierPathWithRect:NSMakeRect(0, 0, 64, 64)];
+		[outside appendBezierPath:b];
+		outside.windingRule = NSWindingRuleEvenOdd;
+		[outside addClip];
+		NSAffineTransform *tilt = [NSAffineTransform transform];
+		[tilt translateXBy:32 yBy:32];
+		[tilt rotateByDegrees:-24];
+		NSBezierPath *orbit = [NSBezierPath bezierPathWithOvalInRect:NSMakeRect(-27, -12, 54, 24)];
+		[orbit transformUsingAffineTransform:tilt];
+		orbit.lineWidth = 3.4;
+		[[NSColor colorWithWhite:0 alpha:0.5] set];
+		[orbit stroke];
+		[NSGraphicsContext restoreGraphicsState];
+
+		b.lineWidth = 5.5;
+		b.lineJoinStyle = NSLineJoinStyleRound;
+		[b stroke];
+
 		if (attention) {
-			[[NSBezierPath bezierPathWithOvalInRect:NSMakeRect(25, 24, 16, 16)] fill];
+			[[NSBezierPath bezierPathWithOvalInRect:NSMakeRect(26, 25, 12, 12)] fill];
 		} else {
 			for (int i = 0; i < 3; i++) {
-				[[NSBezierPath bezierPathWithOvalInRect:NSMakeRect(21.5 + i * 8, 28.5, 7, 7)] fill];
+				[[NSBezierPath bezierPathWithOvalInRect:NSMakeRect(20 + i * 8.5, 27.5, 7, 7)] fill];
 			}
 		}
+		// The particles on the orbit.
+		[[NSBezierPath bezierPathWithOvalInRect:NSMakeRect(56.67 - 4.6, 21.02 - 4.6, 9.2, 9.2)] fill];
+		[[NSBezierPath bezierPathWithOvalInRect:NSMakeRect(7.33 - 4.6, 42.98 - 4.6, 9.2, 9.2)] fill];
 		return YES;
 	}];
 	image.accessibilityDescription = @"Positron";

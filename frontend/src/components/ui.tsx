@@ -121,14 +121,32 @@ export function Icon({ name, size = 18, strokeWidth = 1.8 }: { name: keyof typeo
   );
 }
 
-/** Logo is the D monogram: the letter D drawn as a speech bubble, with typing dots. */
+/** Logo is Positron's mark: a chat bubble with typing dots on a tilted orbit, with two particles. */
 export function Logo({ size = 26 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 64 64" fill="none" aria-hidden="true" className="icon">
-      <path d="M15 11h17a21 21 0 0 1 0 42H23l-8 6V11z" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" />
-      <circle cx="25" cy="32" r="3" fill="currentColor" />
-      <circle cx="33" cy="32" r="3" fill="currentColor" />
-      <circle cx="41" cy="32" r="3" fill="currentColor" />
+      <ellipse
+        cx="32"
+        cy="32"
+        rx="27"
+        ry="12"
+        transform="rotate(-24 32 32)"
+        stroke="currentColor"
+        strokeWidth="3.2"
+        opacity="0.45"
+      />
+      <path
+        d="M19 19h26a5 5 0 0 1 5 5v14a5 5 0 0 1-5 5H30l-8 6v-6h-3a5 5 0 0 1-5-5V24a5 5 0 0 1 5-5z"
+        style={{ fill: "var(--side)" }}
+        stroke="currentColor"
+        strokeWidth="5"
+        strokeLinejoin="round"
+      />
+      <circle cx="23.5" cy="31" r="3" fill="currentColor" />
+      <circle cx="32" cy="31" r="3" fill="currentColor" />
+      <circle cx="40.5" cy="31" r="3" fill="#ff5c8a" />
+      <circle cx="56.67" cy="21.02" r="4.6" fill="#ff5c8a" />
+      <circle cx="7.33" cy="42.98" r="4.6" fill="currentColor" />
     </svg>
   );
 }
