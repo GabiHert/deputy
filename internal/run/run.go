@@ -53,6 +53,18 @@ func cachedEnv() func() []string {
 
 // Run starts the app.
 func Run(assets embed.FS) error {
+	// wails build runs this to list the bound methods. It must not open, create or move the real
+	// data folder: give it a throwaway one, which also turns the Deputy migration off.
+	if generatingBindings {
+		dir, err := os.MkdirTemp("", "positron-bindings-")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(dir)
+		if err := os.Setenv("POSITRON_HOME", dir); err != nil {
+			return err
+		}
+	}
 	// Positron was called Deputy: bring Deputy's data over once, before anything opens it.
 	var moved migrate.Result
 	if p, ok := migrate.Default(); ok {
