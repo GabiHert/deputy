@@ -3,23 +3,23 @@
 #include "menubar_darwin.h"
 
 // Implemented in Go; the numbers match the action constants in menubar.go.
-extern void deputyMenuBarAction(int action);
+extern void positronMenuBarAction(int action);
 
-@interface DeputyMenuTarget : NSObject
+@interface PositronMenuTarget : NSObject
 - (void)pick:(NSMenuItem *)sender;
 @end
 
-@implementation DeputyMenuTarget
+@implementation PositronMenuTarget
 - (void)pick:(NSMenuItem *)sender {
-	deputyMenuBarAction((int)sender.tag);
+	positronMenuBarAction((int)sender.tag);
 }
 @end
 
 static NSStatusItem *statusItem;
-static DeputyMenuTarget *target;
+static PositronMenuTarget *target;
 static int waiting;
 static int unread;
-static atomic_int deputyFocused; // 1 while one of Deputy's windows has the keyboard focus
+static atomic_int positronFocused; // 1 while one of Positron's windows has the keyboard focus
 
 static NSMenuItem *menuItem(NSString *title, NSInteger tag) {
 	NSMenuItem *mi = [[NSMenuItem alloc] initWithTitle:title action:@selector(pick:) keyEquivalent:@""];
@@ -28,7 +28,7 @@ static NSMenuItem *menuItem(NSString *title, NSInteger tag) {
 	return mi;
 }
 
-// logoImage draws Deputy's D monogram (a D shaped like a speech bubble, with typing dots) as
+// logoImage draws Positron's D monogram (a D shaped like a speech bubble, with typing dots) as
 // a template image, from the same 64x64 drawing as the app icon. With replies waiting, the
 // dots become one filled dot so the icon reads differently at a glance.
 static NSImage *logoImage(BOOL attention) {
@@ -56,7 +56,7 @@ static NSImage *logoImage(BOOL attention) {
 		}
 		return YES;
 	}];
-	image.accessibilityDescription = @"Deputy";
+	image.accessibilityDescription = @"Positron";
 	return image;
 }
 
@@ -70,7 +70,7 @@ static void render(void) {
 	statusItem.button.image = image;
 	statusItem.button.title = waiting > 0 ? [NSString stringWithFormat:@" %d", waiting] : @"";
 	statusItem.button.imagePosition = NSImageLeft;
-	statusItem.button.toolTip = waiting > 0 ? [NSString stringWithFormat:@"Deputy: %d %@ waiting", waiting, waiting == 1 ? @"reply" : @"replies"] : @"Deputy";
+	statusItem.button.toolTip = waiting > 0 ? [NSString stringWithFormat:@"Positron: %d %@ waiting", waiting, waiting == 1 ? @"reply" : @"replies"] : @"Positron";
 
 	NSMenu *menu = [[NSMenu alloc] init];
 	if (unread > 0) {
@@ -81,35 +81,35 @@ static void render(void) {
 	} else {
 		[menu addItem:menuItem(@"Show activity", 0)];
 	}
-	[menu addItem:menuItem(@"Open Deputy", 1)];
+	[menu addItem:menuItem(@"Open Positron", 1)];
 	[menu addItem:[NSMenuItem separatorItem]];
-	[menu addItem:menuItem(@"Quit Deputy", 2)];
+	[menu addItem:menuItem(@"Quit Positron", 2)];
 	statusItem.menu = menu;
 }
 
-void DeputyMenuBarInstall(void) {
+void PositronMenuBarInstall(void) {
 	dispatch_async(dispatch_get_main_queue(), ^{
 		if (statusItem != nil) {
 			return;
 		}
-		target = [[DeputyMenuTarget alloc] init];
+		target = [[PositronMenuTarget alloc] init];
 		statusItem = [[NSStatusBar systemStatusBar] statusItemWithLength:NSVariableStatusItemLength];
 		render();
 		NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
 		[nc addObserverForName:NSWindowDidBecomeKeyNotification object:nil queue:nil usingBlock:^(NSNotification *n) {
-			atomic_store(&deputyFocused, 1);
+			atomic_store(&positronFocused, 1);
 		}];
 		[nc addObserverForName:NSWindowDidResignKeyNotification object:nil queue:nil usingBlock:^(NSNotification *n) {
-			atomic_store(&deputyFocused, NSApp.keyWindow != nil ? 1 : 0);
+			atomic_store(&positronFocused, NSApp.keyWindow != nil ? 1 : 0);
 		}];
 		[nc addObserverForName:NSApplicationDidResignActiveNotification object:nil queue:nil usingBlock:^(NSNotification *n) {
-			atomic_store(&deputyFocused, 0);
+			atomic_store(&positronFocused, 0);
 		}];
-		atomic_store(&deputyFocused, (NSApp.isActive && NSApp.keyWindow != nil) ? 1 : 0);
+		atomic_store(&positronFocused, (NSApp.isActive && NSApp.keyWindow != nil) ? 1 : 0);
 	});
 }
 
-void DeputyMenuBarSetUnread(int n) {
+void PositronMenuBarSetUnread(int n) {
 	dispatch_async(dispatch_get_main_queue(), ^{
 		unread = n;
 		NSApp.dockTile.badgeLabel = n > 0 ? (n > 999 ? @"999+" : [NSString stringWithFormat:@"%d", n]) : nil;
@@ -117,11 +117,11 @@ void DeputyMenuBarSetUnread(int n) {
 	});
 }
 
-int DeputyAppFocused(void) {
-	return atomic_load(&deputyFocused);
+int PositronAppFocused(void) {
+	return atomic_load(&positronFocused);
 }
 
-void DeputyMenuBarSetWaiting(int n) {
+void PositronMenuBarSetWaiting(int n) {
 	dispatch_async(dispatch_get_main_queue(), ^{
 		waiting = n;
 		render();

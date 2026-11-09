@@ -1,4 +1,4 @@
-// Package whatsapp links Deputy to the person's WhatsApp as a linked device, through whatsmeow.
+// Package whatsapp links Positron to the person's WhatsApp as a linked device, through whatsmeow.
 package whatsapp
 
 import (
@@ -48,22 +48,22 @@ type State struct {
 
 // Incoming is a message received in any chat.
 type Incoming struct {
-	ID         string
-	Chat       string // chat JID
-	IsGroup    bool
-	Sender     string // sender JID
-	SenderName string
-	FromMe     bool
-	FromDeputy bool // sent by Deputy's own linked device, not typed on the phone
-	At         time.Time
-	Kind       string // domain.MsgKind values
-	Text       string
-	Mime       string
-	Seconds    int
-	FileName   string
-	MentionsMe bool
-	QuotedID   string
-	QuotesMe   bool
+	ID           string
+	Chat         string // chat JID
+	IsGroup      bool
+	Sender       string // sender JID
+	SenderName   string
+	FromMe       bool
+	FromPositron bool // sent by Positron's own linked device, not typed on the phone
+	At           time.Time
+	Kind         string // domain.MsgKind values
+	Text         string
+	Mime         string
+	Seconds      int
+	FileName     string
+	MentionsMe   bool
+	QuotedID     string
+	QuotesMe     bool
 	// Download fetches the media bytes; nil without media.
 	Download func(ctx context.Context) ([]byte, error)
 
@@ -75,7 +75,7 @@ type Incoming struct {
 	MediaRef     []byte // the media message, for DownloadRef
 	History      bool   // from a history sync: old, never for agents or notifications
 	Status       string // own messages from a history sync: "sent", "delivered", "read", "played"
-	Revoked      bool   // deleted for everyone before Deputy saw it
+	Revoked      bool   // deleted for everyone before Positron saw it
 	// ViewOnce: a view-once photo, video or voice note. Without MediaRef it is only a placeholder:
 	// WhatsApp keeps the media on the phone.
 	ViewOnce bool
@@ -103,7 +103,7 @@ type Client struct {
 	onUpdate  func(any)
 
 	groupNames sync.Map // jid -> name
-	skipped    sync.Map // shapes of messages Deputy does not show, logged once each
+	skipped    sync.Map // shapes of messages Positron does not show, logged once each
 
 	timersMu    sync.Mutex
 	timers      map[string]Timer // chat JID -> disappearing-messages timer
@@ -115,7 +115,7 @@ func Open(ctx context.Context, dbPath string) (*Client, error) {
 	if err := os.MkdirAll(filepath.Dir(dbPath), 0o700); err != nil {
 		return nil, err
 	}
-	store.SetOSInfo("Deputy (Mac)", [3]uint32{0, 1, 0})
+	store.SetOSInfo("Positron (Mac)", [3]uint32{0, 1, 0})
 	store.DeviceProps.PlatformType = waCompanionReg.DeviceProps_DESKTOP.Enum()
 	c, err := sqlstore.New(ctx, "sqlite3", "file:"+dbPath+"?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000", waLog.Stdout("WAStore", "WARN", false))
 	if err != nil {
@@ -263,7 +263,7 @@ func (c *Client) client() (*whatsmeow.Client, error) {
 	return c.cli, nil
 }
 
-// Logout unlinks Deputy from the phone and shows a new QR code.
+// Logout unlinks Positron from the phone and shows a new QR code.
 func (c *Client) Logout(ctx context.Context) error {
 	cli, err := c.client()
 	if err != nil {
@@ -319,7 +319,7 @@ func (c *Client) handle(evt any) {
 	case *events.StreamReplaced:
 		c.setState(func(s *State) {
 			s.State = StateError
-			s.Error = "WhatsApp was opened with this session somewhere else. Quit the other copy of Deputy."
+			s.Error = "WhatsApp was opened with this session somewhere else. Quit the other copy of Positron."
 		})
 	case *events.LoggedOut:
 		c.setState(func(s *State) { *s = State{State: StateStarting} })
@@ -442,7 +442,7 @@ func (c *Client) isMe(cli *whatsmeow.Client, jid string) bool {
 }
 
 // classify turns a message event into a new message (Incoming) or a change to an earlier one
-// (Reaction, Revoke or Edit). Both are empty for what Deputy does not show.
+// (Reaction, Revoke or Edit). Both are empty for what Positron does not show.
 func (c *Client) classify(e *events.Message) (Incoming, any) {
 	cli, err := c.client()
 	if err != nil {
@@ -532,7 +532,7 @@ func (c *Client) classify(e *events.Message) (Incoming, any) {
 		in.FileSize, media = int64(st.GetFileLength()), &waE2E.Message{StickerMessage: st}
 	default:
 		c.logSkipped(e)
-		return Incoming{}, nil // receipts, polls, calls and other things Deputy does not show
+		return Incoming{}, nil // receipts, polls, calls and other things Positron does not show
 	}
 	if media != nil {
 		in.MediaRef, _ = proto.Marshal(media)
@@ -541,7 +541,7 @@ func (c *Client) classify(e *events.Message) (Incoming, any) {
 	return in, nil
 }
 
-// header fills in who sent a message, where and when. It is false for chats Deputy leaves out.
+// header fills in who sent a message, where and when. It is false for chats Positron leaves out.
 func (c *Client) header(cli *whatsmeow.Client, info *types.MessageInfo) (Incoming, bool) {
 	if info.Chat.Server == types.BroadcastServer || info.Chat.Server == types.NewsletterServer {
 		return Incoming{}, false
@@ -551,7 +551,7 @@ func (c *Client) header(cli *whatsmeow.Client, info *types.MessageInfo) (Incomin
 		SenderName: info.PushName, FromMe: info.IsFromMe, At: info.Timestamp,
 	}
 	if in.FromMe && cli.Store.ID != nil && info.Sender.Device == cli.Store.ID.Device {
-		in.FromDeputy = true
+		in.FromPositron = true
 	}
 	if in.SenderName == "" && !in.FromMe {
 		in.SenderName = c.contactName(info.Sender.ToNonAD())

@@ -17,7 +17,7 @@ export type Thread = {
   /** oldest first */
   messages: ChatMessage[];
   loading: boolean;
-  /** Deputy has older messages stored */
+  /** Positron has older messages stored */
   hasMore: boolean;
   loadingOlder: boolean;
   /** waiting for the phone to send older messages */

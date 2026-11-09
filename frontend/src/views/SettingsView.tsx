@@ -49,8 +49,8 @@ export function SettingsView({ status, setStatus }: { status: Status | null; set
         <div className="row row--tight">
           <h1>Settings</h1>
           {status?.version && (
-            <span className="version-pill mono" title="The Deputy version running now">
-              Deputy {status.version}
+            <span className="version-pill mono" title="The Positron version running now">
+              Positron {status.version}
             </span>
           )}
         </div>
@@ -178,7 +178,7 @@ export function SettingsView({ status, setStatus }: { status: Status | null; set
             </h2>
             <dl className="dl">
               <dt>Linked as</dt>
-              <dd>{wa?.state === "connected" ? `Deputy (Mac) on ${wa.phone}` : "Not linked"}</dd>
+              <dd>{wa?.state === "connected" ? `Positron (Mac) on ${wa.phone}` : "Not linked"}</dd>
               <dt>Media folder</dt>
               <dd className="mono small wrap-anywhere">{settings.mediaDir}</dd>
               <dt>Size</dt>
@@ -250,11 +250,11 @@ export function SettingsView({ status, setStatus }: { status: Status | null; set
               checked={settings.openAtLogin}
               onChange={(v) => update({ ...settings, openAtLogin: v })}
               title="Open at login"
-              help="Agents only work while Deputy is running. Closing the window keeps it running in the menu bar."
+              help="Agents only work while Positron is running. Closing the window keeps it running in the menu bar."
             />
             <Check id="a-notify" checked={settings.notify} onChange={(v) => update({ ...settings, notify: v })} title="Notify me when a reply needs approval" />
             <div className="section__foot">
-              <span className="muted small">Deputy {status?.version || ""}</span>
+              <span className="muted small">Positron {status?.version || ""}</span>
             </div>
           </section>
         )}
@@ -267,7 +267,7 @@ export function SettingsView({ status, setStatus }: { status: Status | null; set
   );
 }
 
-/** ClaudeCodeCard turns on the MCP server that lets Claude Code in other projects use Deputy. */
+/** ClaudeCodeCard turns on the MCP server that lets Claude Code in other projects use Positron. */
 function ClaudeCodeCard({ onEnabled }: { onEnabled: (v: boolean) => void }) {
   const [st, setSt] = useState<MCPStatus | null>(null);
   const [busy, setBusy] = useState("");
@@ -313,7 +313,7 @@ function ClaudeCodeCard({ onEnabled }: { onEnabled: (v: boolean) => void }) {
           })
         }
         title="Allow Claude Code in other projects"
-        help="Claude Code in any folder can then use Deputy as you: read chats, send WhatsApp messages, ask agents, approve replies and change agents. Only this Mac can connect, with a secret token."
+        help="Claude Code in any folder can then use Positron as you: read chats, send WhatsApp messages, ask agents, approve replies and change agents. Only this Mac can connect, with a secret token."
       />
       {st?.enabled && (
         <p className="small no-margin" role="status">
@@ -336,7 +336,7 @@ function ClaudeCodeCard({ onEnabled }: { onEnabled: (v: boolean) => void }) {
               act("add", async () => {
                 setOut("");
                 setOut(await api.addMCPToClaude());
-                setNote("Added. New Claude Code sessions have Deputy's tools; check with /mcp.");
+                setNote("Added. New Claude Code sessions have Positron's tools; check with /mcp.");
               })
             }
           >
@@ -454,7 +454,7 @@ function UpdatesCard() {
         : state === "verifying"
           ? "Checking the download and its signature…"
           : state === "installing"
-            ? u?.message || "Deputy quits now and reopens when the new version is in place."
+            ? u?.message || "Positron quits now and reopens when the new version is in place."
             : "";
 
   return (
@@ -470,7 +470,7 @@ function UpdatesCard() {
         (u?.upToDate ? (
           <span className="ok-text small row row--tight strong">
             <Icon name="check" size={14} strokeWidth={2.4} />
-            Deputy is up to date
+            Positron is up to date
           </span>
         ) : (
           <p className="small no-margin">
@@ -480,12 +480,12 @@ function UpdatesCard() {
         ))}
       {u?.installedApp?.includes("/AppTranslocation/") && (
         <p className="error-text small no-margin">
-          macOS is running Deputy from a temporary read-only copy, so it can't update itself. Quit Deputy, drag Deputy.app into
+          macOS is running Positron from a temporary read-only copy, so it can't update itself. Quit Positron, drag Positron.app into
           Applications in Finder, then open it from there.
         </p>
       )}
       {u && !u.installedApp && (
-        <p className="muted small no-margin">Deputy is not running from an app bundle, so it cannot update itself.</p>
+        <p className="muted small no-margin">Positron is not running from an app bundle, so it cannot update itself.</p>
       )}
       {running && (
         <span className="fg2 small" role="status">
@@ -511,13 +511,13 @@ function UpdatesCard() {
               })
             }
           >
-            {running ? "Updating…" : "Update Deputy"}
+            {running ? "Updating…" : "Update Positron"}
           </button>
         )}
       </div>
       <div className="update-token">
         <p className="muted small no-margin">
-          Updates come from the releases of <span className="mono">{u?.repo || "GabiHert/deputy"}</span>.{" "}
+          Updates come from the releases of <span className="mono">{u?.repo || "GabiHert/positron"}</span>.{" "}
           {u?.hasToken
             ? "A GitHub token is saved in your keychain."
             : "For a private repo, save a fine-grained GitHub token with read-only Contents access to that repo."}{" "}

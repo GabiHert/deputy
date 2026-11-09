@@ -21,7 +21,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-const chatHeader = "X-Deputy-Chat"
+const chatHeader = "X-Positron-Chat"
 
 var readTools = []string{"list_chats", "read_chat", "search_messages", "list_agents", "get_agent", "read_knowledge", "list_runs", "query"}
 
@@ -37,7 +37,7 @@ func toolsFor(purpose string) []string {
 	return append(t, "propose_agent", "propose_change", "propose_message")
 }
 
-// toolServer serves Deputy's tools to Claude Code over MCP on localhost, behind a per-launch token.
+// toolServer serves Positron's tools to Claude Code over MCP on localhost, behind a per-launch token.
 type toolServer struct {
 	url   string
 	token string
@@ -47,7 +47,7 @@ type toolServer struct {
 func startToolServer(s *Service) (*toolServer, error) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		return nil, fmt.Errorf("could not start Deputy's tool server: %w", err)
+		return nil, fmt.Errorf("could not start Positron's tool server: %w", err)
 	}
 	b := make([]byte, 24)
 	_, _ = rand.Read(b)
@@ -228,7 +228,7 @@ func asJSON(v any) *mcp.CallToolResult {
 const cardSent = "Shown to the person as a card. Stop here and don't repeat what the card says. Their decision comes in a later message."
 
 func (s *Service) mcpServer(chatID string) *mcp.Server {
-	srv := mcp.NewServer(&mcp.Implementation{Name: "deputy", Version: "2"}, nil)
+	srv := mcp.NewServer(&mcp.Implementation{Name: "positron", Version: "2"}, nil)
 	purpose := ""
 	if c, err := s.chat(chatID); err == nil {
 		purpose = c.Purpose
@@ -240,7 +240,7 @@ func (s *Service) mcpServer(chatID string) *mcp.Server {
 	}
 	type H = mcp.CallToolRequest
 
-	mcp.AddTool(srv, &mcp.Tool{Name: "list_chats", Description: "List the owner's WhatsApp chats and groups Deputy knows: jid, name, isGroup, members, lastAt, lastText, agentId and agentName (the agent handling it, if any)."},
+	mcp.AddTool(srv, &mcp.Tool{Name: "list_chats", Description: "List the owner's WhatsApp chats and groups Positron knows: jid, name, isGroup, members, lastAt, lastText, agentId and agentName (the agent handling it, if any)."},
 		func(ctx context.Context, _ *H, in listChatsIn) (*mcp.CallToolResult, any, error) {
 			p := map[string]any{}
 			if in.Text != "" {
@@ -321,7 +321,7 @@ func (s *Service) mcpServer(chatID string) *mcp.Server {
 			return text(b.String()), nil, nil
 		})
 
-	mcp.AddTool(srv, &mcp.Tool{Name: "list_agents", Description: "List Deputy's agents: id, name, enabled, mode, trigger, chats, chatNames."},
+	mcp.AddTool(srv, &mcp.Tool{Name: "list_agents", Description: "List Positron's agents: id, name, enabled, mode, trigger, chats, chatNames."},
 		func(ctx context.Context, _ *H, _ struct{}) (*mcp.CallToolResult, any, error) {
 			r, _ := s.d.Query.Run(ctx, "agents.list", nil)
 			return asJSON(r.Items), nil, nil

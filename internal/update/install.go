@@ -16,7 +16,7 @@ import (
 var installScript []byte
 
 // startInstaller writes install.sh to a new temp folder and starts it in its own session, so it
-// outlives Deputy; it does not wait. extraEnv carries the DEPUTY_* overrides tests set.
+// outlives Positron; it does not wait. extraEnv carries the POSITRON_* overrides tests set.
 func startInstaller(pid int, newApp, installedApp, logPath string, extraEnv []string) error {
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o700); err != nil {
 		return fmt.Errorf("cannot write %s: %w", logPath, err)
@@ -27,7 +27,7 @@ func startInstaller(pid int, newApp, installedApp, logPath string, extraEnv []st
 	}
 	defer logf.Close()
 
-	dir, err := os.MkdirTemp("", "deputy-install-")
+	dir, err := os.MkdirTemp("", "positron-install-")
 	if err != nil {
 		return err
 	}

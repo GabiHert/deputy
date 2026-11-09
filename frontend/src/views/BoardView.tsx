@@ -798,7 +798,7 @@ function CustomFrame({
       const win = ref.current?.contentWindow;
       if (!win || e.source !== win) return;
       const m = e.data as {
-        deputy?: string;
+        positron?: string;
         id?: number;
         name?: string;
         params?: Record<string, unknown>;
@@ -807,7 +807,7 @@ function CustomFrame({
       };
       if (
         m &&
-        m.deputy === "action" &&
+        m.positron === "action" &&
         typeof m.id === "number" &&
         typeof m.runId === "string" &&
         m.runId
@@ -822,11 +822,11 @@ function CustomFrame({
         api2
           .dismissRun(m.runId, dismiss)
           .then(() =>
-            win.postMessage({ deputy: "result", id: m.id, result: true }, "*"),
+            win.postMessage({ positron: "result", id: m.id, result: true }, "*"),
           )
           .catch((err) =>
             win.postMessage(
-              { deputy: "result", id: m.id, error: errText(err) },
+              { positron: "result", id: m.id, error: errText(err) },
               "*",
             ),
           );
@@ -834,7 +834,7 @@ function CustomFrame({
       }
       if (
         !m ||
-        m.deputy !== "query" ||
+        m.positron !== "query" ||
         typeof m.id !== "number" ||
         typeof m.name !== "string"
       )
@@ -848,11 +848,11 @@ function CustomFrame({
           >,
         )
         .then((result) =>
-          win.postMessage({ deputy: "result", id: m.id, result }, "*"),
+          win.postMessage({ positron: "result", id: m.id, result }, "*"),
         )
         .catch((err) =>
           win.postMessage(
-            { deputy: "result", id: m.id, error: errText(err) },
+            { positron: "result", id: m.id, error: errText(err) },
             "*",
           ),
         );
@@ -863,7 +863,7 @@ function CustomFrame({
 
   useEffect(() => {
     ref.current?.contentWindow?.postMessage(
-      { deputy: "update", data: b.data },
+      { positron: "update", data: b.data },
       "*",
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -1,8 +1,8 @@
 # Notices
 
-Deputy copies code from Notted, which copies and modifies code from quant (github.com/brienze1/quant), under the MIT License
+Positron copies code from Notted, which copies and modifies code from quant (github.com/brienze1/quant), under the MIT License
 below. Each copied file starts with a header naming its quant source, and is listed in the table.
-Deputy never imports quant's packages.
+Positron never imports quant's packages.
 
 ## quant license
 
@@ -51,12 +51,12 @@ SOFTWARE.
 
 ## Code from Notted
 
-Notted is by the same author as Deputy. These Deputy files adapt Notted's self-update code:
+Notted is by the same author as Positron. These Positron files adapt Notted's self-update code:
 
-| Deputy file | Notted source | Changes |
+| Positron file | Notted source | Changes |
 |---|---|---|
 | `internal/update/update.go` | `internal/application/service/update.go` | downloads a GitHub tarball instead of pulling a clone; build has network access; deletes the code after the build |
-| `internal/update/install.go`, `internal/update/install.sh` | `internal/integration/install/install.go`, `install.sh` | DEPUTY_* overrides; deletes the staged app after copying it; no permission reset (Deputy asks for none) |
+| `internal/update/install.go`, `internal/update/install.sh` | `internal/integration/install/install.go`, `install.sh` | POSITRON_* overrides; deletes the staged app after copying it; no permission reset (Positron asks for none) |
 | `internal/update/stream.go` | `internal/integration/process/stream.go` | a function instead of a type; uses claude.LookPath |
 
 ## Fonts

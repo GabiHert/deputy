@@ -1,4 +1,4 @@
-// Package domain holds Deputy's core types.
+// Package domain holds Positron's core types.
 package domain
 
 import (
@@ -132,7 +132,7 @@ type Settings struct {
 	MediaRetentionDays int           `json:"mediaRetentionDays"` // 0 keeps media forever
 	OpenAtLogin        bool          `json:"openAtLogin"`
 	Notify             bool          `json:"notify"`
-	MCPEnabled         bool          `json:"mcpEnabled"` // Claude Code in other projects can use Deputy
+	MCPEnabled         bool          `json:"mcpEnabled"` // Claude Code in other projects can use Positron
 }
 
 // DefaultSettings are the settings of a fresh install.

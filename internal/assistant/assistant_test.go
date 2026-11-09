@@ -260,10 +260,10 @@ func TestFirstLine(t *testing.T) {
 	}
 }
 
-// TestRealClaude asks the person's real Claude Code to create an agent. Opt in with DEPUTY_E2E=1.
+// TestRealClaude asks the person's real Claude Code to create an agent. Opt in with POSITRON_E2E=1.
 func TestRealClaude(t *testing.T) {
-	if os.Getenv("DEPUTY_E2E") != "1" {
-		t.Skip("set DEPUTY_E2E=1 to run Claude Code for real")
+	if os.Getenv("POSITRON_E2E") != "1" {
+		t.Skip("set POSITRON_E2E=1 to run Claude Code for real")
 	}
 	s, _, _ := setup(t)
 	s.d.Model = "haiku"

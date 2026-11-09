@@ -47,7 +47,7 @@ func (k Keychain) Set(ctx context.Context, repo, token string) error {
 		return errors.New("That doesn't look like a GitHub token. Paste the token that starts with github_pat_.")
 	}
 	if !safeArg(repo) || !safeArg(k.Service) {
-		return fmt.Errorf("Deputy cannot save a token for %q.", repo)
+		return fmt.Errorf("Positron cannot save a token for %q.", repo)
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()

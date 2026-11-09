@@ -46,11 +46,11 @@ func TestNewer(t *testing.T) {
 
 func TestParseSums(t *testing.T) {
 	a, b := strings.Repeat("a", 64), strings.Repeat("B", 64)
-	got, err := parseSums(strings.NewReader(a + "  Deputy-v1.0.0-darwin-arm64.zip\n\n" + b + " *other.zip\n"))
+	got, err := parseSums(strings.NewReader(a + "  Positron-v1.0.0-darwin-arm64.zip\n\n" + b + " *other.zip\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got["Deputy-v1.0.0-darwin-arm64.zip"] != a || got["other.zip"] != strings.ToLower(b) {
+	if got["Positron-v1.0.0-darwin-arm64.zip"] != a || got["other.zip"] != strings.ToLower(b) {
 		t.Errorf("got %v", got)
 	}
 	if _, err := parseSums(strings.NewReader("abc  x.zip\n")); err == nil {
@@ -59,12 +59,12 @@ func TestParseSums(t *testing.T) {
 }
 
 func TestParseSigInfo(t *testing.T) {
-	s := parseSigInfo("Executable=/x\nIdentifier=tech.bhlabs.deputy\nSignature=adhoc\nTeamIdentifier=not set\n")
-	if s != (SigInfo{Identifier: "tech.bhlabs.deputy", Adhoc: true}) {
+	s := parseSigInfo("Executable=/x\nIdentifier=tech.bhlabs.positron\nSignature=adhoc\nTeamIdentifier=not set\n")
+	if s != (SigInfo{Identifier: "tech.bhlabs.positron", Adhoc: true}) {
 		t.Errorf("adhoc: %+v", s)
 	}
-	s = parseSigInfo("Identifier=tech.bhlabs.deputy\nAuthority=Developer ID Application: X (ABCDE12345)\nTeamIdentifier=ABCDE12345\n")
-	if s != (SigInfo{Identifier: "tech.bhlabs.deputy", TeamID: "ABCDE12345"}) {
+	s = parseSigInfo("Identifier=tech.bhlabs.positron\nAuthority=Developer ID Application: X (ABCDE12345)\nTeamIdentifier=ABCDE12345\n")
+	if s != (SigInfo{Identifier: "tech.bhlabs.positron", TeamID: "ABCDE12345"}) {
 		t.Errorf("developer id: %+v", s)
 	}
 }
@@ -103,9 +103,9 @@ func (f *fakeSigner) Assess(_ context.Context, app string) error {
 }
 
 func TestCheckSignature(t *testing.T) {
-	adhoc := SigInfo{Identifier: "tech.bhlabs.deputy", Adhoc: true}
-	team := SigInfo{Identifier: "tech.bhlabs.deputy", TeamID: "TEAM1"}
-	other := SigInfo{Identifier: "tech.bhlabs.deputy", TeamID: "TEAM2"}
+	adhoc := SigInfo{Identifier: "tech.bhlabs.positron", Adhoc: true}
+	team := SigInfo{Identifier: "tech.bhlabs.positron", TeamID: "TEAM1"}
+	other := SigInfo{Identifier: "tech.bhlabs.positron", TeamID: "TEAM2"}
 	cases := []struct {
 		name          string
 		cur, next     SigInfo
@@ -125,7 +125,7 @@ func TestCheckSignature(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			f := &fakeSigner{info: map[string]SigInfo{"installed": c.cur, "next": c.next}, broken: c.broken, rejected: c.block}
-			err := checkSignature(context.Background(), f, "/x/installed/Deputy.app", "/x/next/Deputy.app")
+			err := checkSignature(context.Background(), f, "/x/installed/Positron.app", "/x/next/Positron.app")
 			if c.wantErr == "" && err != nil {
 				t.Fatalf("err = %v", err)
 			}
@@ -139,7 +139,7 @@ func TestCheckSignature(t *testing.T) {
 	}
 }
 
-const zipName = "Deputy-v1.1.0-darwin-arm64.zip"
+const zipName = "Positron-v1.1.0-darwin-arm64.zip"
 
 // releaseServer serves a latest release whose zip is zip and whose SHA256SUMS lists sum. When
 // token is set, every request needs it.
@@ -151,16 +151,16 @@ func releaseServer(t *testing.T, zip []byte, sum, token string) *httptest.Server
 			return
 		}
 		switch r.URL.Path {
-		case "/repos/GabiHert/deputy/releases/latest":
-			fmt.Fprintf(w, `{"tag_name":"v1.1.0","name":"Deputy 1.1","body":"notes","html_url":"https://x","published_at":"2026-11-05T10:00:00Z",
-				"assets":[{"id":1,"name":"Deputy-v1.1.0-darwin-amd64.zip","size":1},{"id":2,"name":%q,"size":%d},{"id":3,"name":"SHA256SUMS","size":100}]}`, zipName, len(zip))
-		case "/repos/GabiHert/deputy/releases/assets/2":
+		case "/repos/GabiHert/positron/releases/latest":
+			fmt.Fprintf(w, `{"tag_name":"v1.1.0","name":"Positron 1.1","body":"notes","html_url":"https://x","published_at":"2026-11-05T10:00:00Z",
+				"assets":[{"id":1,"name":"Positron-v1.1.0-darwin-amd64.zip","size":1},{"id":2,"name":%q,"size":%d},{"id":3,"name":"SHA256SUMS","size":100}]}`, zipName, len(zip))
+		case "/repos/GabiHert/positron/releases/assets/2":
 			if r.Header.Get("Accept") != "application/octet-stream" {
 				http.Error(w, "accept", http.StatusBadRequest)
 				return
 			}
 			_, _ = w.Write(zip)
-		case "/repos/GabiHert/deputy/releases/assets/3":
+		case "/repos/GabiHert/positron/releases/assets/3":
 			fmt.Fprintf(w, "%s  %s\n", sum, zipName)
 		default:
 			http.NotFound(w, r)
@@ -172,7 +172,7 @@ func TestLatestPicksThisMacAndFallsBackToToken(t *testing.T) {
 	srv := releaseServer(t, []byte("zip"), strings.Repeat("0", 64), "good")
 	defer srv.Close()
 	var owners []string
-	g := &GitHub{Repo: "GabiHert/deputy", BaseURL: srv.URL, Client: srv.Client(),
+	g := &GitHub{Repo: "GabiHert/positron", BaseURL: srv.URL, Client: srv.Client(),
 		AssetSuffixes: []string{"-darwin-arm64.zip", "-darwin-universal.zip"},
 		Tokens: func(_ context.Context, owner string) []string {
 			owners = append(owners, owner)
@@ -192,7 +192,7 @@ func TestLatestPicksThisMacAndFallsBackToToken(t *testing.T) {
 	}
 
 	empty := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/repos/GabiHert/deputy" && r.Header.Get("Authorization") == "Bearer good" {
+		if r.URL.Path == "/repos/GabiHert/positron" && r.Header.Get("Authorization") == "Bearer good" {
 			fmt.Fprint(w, `{}`)
 			return
 		}
@@ -213,11 +213,11 @@ func TestLatestPicksThisMacAndFallsBackToToken(t *testing.T) {
 	}
 }
 
-// releaseZip builds a Deputy.app folder and zips it the way the release script does.
+// releaseZip builds a Positron.app folder and zips it the way the release script does.
 func releaseZip(t *testing.T) []byte {
 	t.Helper()
 	dir := t.TempDir()
-	exe := filepath.Join(dir, "Deputy.app", "Contents", "MacOS", "Deputy")
+	exe := filepath.Join(dir, "Positron.app", "Contents", "MacOS", "Positron")
 	if err := os.MkdirAll(filepath.Dir(exe), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +225,7 @@ func releaseZip(t *testing.T) []byte {
 		t.Fatal(err)
 	}
 	zip := filepath.Join(t.TempDir(), zipName)
-	if out, err := exec.Command("/usr/bin/ditto", "-c", "-k", "--keepParent", filepath.Join(dir, "Deputy.app"), zip).CombinedOutput(); err != nil {
+	if out, err := exec.Command("/usr/bin/ditto", "-c", "-k", "--keepParent", filepath.Join(dir, "Positron.app"), zip).CombinedOutput(); err != nil {
 		t.Fatalf("ditto: %v %s", err, out)
 	}
 	b, err := os.ReadFile(zip)
@@ -239,9 +239,9 @@ func sumOf(b []byte) string { h := sha256.Sum256(b); return hex.EncodeToString(h
 
 func newTestService(t *testing.T, srv *httptest.Server, f *fakeSigner) (*Service, string) {
 	t.Helper()
-	installed := filepath.Join(t.TempDir(), "installed", "Deputy.app")
-	s := New(Deps{Version: "v1.0.0", AppName: "Deputy", Dir: t.TempDir()})
-	s.gh.BaseURL, s.gh.Client, s.gh.Repo = srv.URL, srv.Client(), "GabiHert/deputy"
+	installed := filepath.Join(t.TempDir(), "installed", "Positron.app")
+	s := New(Deps{Version: "v1.0.0", AppName: "Positron", Dir: t.TempDir()})
+	s.gh.BaseURL, s.gh.Client, s.gh.Repo = srv.URL, srv.Client(), "GabiHert/positron"
 	s.gh.AssetSuffixes = []string{"-darwin-arm64.zip"}
 	s.gh.Tokens = nil
 	s.keys.Bin = "/usr/bin/false"
@@ -253,7 +253,7 @@ func TestFetchStagesAVerifiedApp(t *testing.T) {
 	zip := releaseZip(t)
 	srv := releaseServer(t, zip, sumOf(zip), "")
 	defer srv.Close()
-	adhoc := SigInfo{Identifier: "tech.bhlabs.deputy", Adhoc: true}
+	adhoc := SigInfo{Identifier: "tech.bhlabs.positron", Adhoc: true}
 	// The unpacked app's parent folder is "unpacked".
 	f := &fakeSigner{info: map[string]SigInfo{"installed": adhoc, "unpacked": adhoc}}
 	s, installed := newTestService(t, srv, f)
@@ -269,15 +269,15 @@ func TestFetchStagesAVerifiedApp(t *testing.T) {
 	if staged != s.stagedApp() {
 		t.Errorf("staged = %s", staged)
 	}
-	if _, err := os.Stat(filepath.Join(staged, "Contents", "MacOS", "Deputy")); err != nil {
+	if _, err := os.Stat(filepath.Join(staged, "Contents", "MacOS", "Positron")); err != nil {
 		t.Errorf("staged app is missing its executable: %v", err)
 	}
 }
 
 func TestFetchRefusesABadDownload(t *testing.T) {
 	zip := releaseZip(t)
-	adhoc := SigInfo{Identifier: "tech.bhlabs.deputy", Adhoc: true}
-	team := SigInfo{Identifier: "tech.bhlabs.deputy", TeamID: "TEAM1"}
+	adhoc := SigInfo{Identifier: "tech.bhlabs.positron", Adhoc: true}
+	team := SigInfo{Identifier: "tech.bhlabs.positron", TeamID: "TEAM1"}
 	cases := []struct {
 		name, sum string
 		signer    *fakeSigner
@@ -317,10 +317,10 @@ func TestUpToDateRelease(t *testing.T) {
 }
 
 func TestPreflightExplainsAppTranslocation(t *testing.T) {
-	app := "/private/var/folders/6r/x/T/AppTranslocation/0EBE69DF/d/Deputy.app"
-	s := New(Deps{Version: "v0.2.0", AppName: "Deputy", Dir: t.TempDir()})
-	s.executable = func() (string, error) { return app + "/Contents/MacOS/Deputy", nil }
-	if _, err := s.preflight(); err == nil || !strings.Contains(err.Error(), "drag Deputy.app into Applications in Finder") {
+	app := "/private/var/folders/6r/x/T/AppTranslocation/0EBE69DF/d/Positron.app"
+	s := New(Deps{Version: "v0.2.0", AppName: "Positron", Dir: t.TempDir()})
+	s.executable = func() (string, error) { return app + "/Contents/MacOS/Positron", nil }
+	if _, err := s.preflight(); err == nil || !strings.Contains(err.Error(), "drag Positron.app into Applications in Finder") {
 		t.Fatalf("err = %v", err)
 	}
 }

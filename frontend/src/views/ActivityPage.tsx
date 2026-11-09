@@ -4,7 +4,7 @@ import { SessionsAside } from "../components/SessionsAside";
 import { ActivityView } from "./ActivityView";
 import { BoardView } from "./BoardView";
 
-const PANEL = "deputy.claudePanel";
+const PANEL = "positron.claudePanel";
 
 /** ActivityPage is the board (or the log) with the Claude chats beside it. */
 export function ActivityPage({

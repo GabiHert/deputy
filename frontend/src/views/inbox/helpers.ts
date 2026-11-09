@@ -199,7 +199,7 @@ export function mergeMessages(existing: ChatMessage[], incoming: ChatMessage[]):
   return [...byId.values()].sort((a, b) => a.at - b.at || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 }
 
-/** pickRecorderMime chooses a MediaRecorder format WebKit can record and Deputy can convert. */
+/** pickRecorderMime chooses a MediaRecorder format WebKit can record and Positron can convert. */
 export function pickRecorderMime(isSupported: (t: string) => boolean): string {
   for (const t of ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/ogg"]) {
     try {

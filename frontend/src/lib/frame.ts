@@ -31,17 +31,18 @@ function cssValue(v: string): string {
 
 const BRIDGE = `(function(){
 var pending={},n=0,subs=[];
-function act(action,runId){return new Promise(function(res,rej){var id=++n;pending[id]={res:res,rej:rej};parent.postMessage({deputy:"action",id:id,action:action,runId:String(runId||"")},"*");});}
-window.deputy={
-query:function(name,params){return new Promise(function(res,rej){var id=++n;pending[id]={res:res,rej:rej};parent.postMessage({deputy:"query",id:id,name:String(name),params:params||{}},"*");});},
+function act(action,runId){return new Promise(function(res,rej){var id=++n;pending[id]={res:res,rej:rej};parent.postMessage({positron:"action",id:id,action:action,runId:String(runId||"")},"*");});}
+window.positron={
+query:function(name,params){return new Promise(function(res,rej){var id=++n;pending[id]={res:res,rej:rej};parent.postMessage({positron:"query",id:id,name:String(name),params:params||{}},"*");});},
 dismissRun:function(runId){return act("dismissRun",runId);},
 restoreRun:function(runId){return act("restoreRun",runId);},
 onUpdate:function(fn){if(typeof fn==="function")subs.push(fn);}
 };
+window.deputy=window.positron;
 window.addEventListener("message",function(e){
 if(e.source!==parent)return;var m=e.data||{};
-if(m.deputy==="result"&&pending[m.id]){var p=pending[m.id];delete pending[m.id];if(m.error)p.rej(new Error(m.error));else p.res(m.result);}
-if(m.deputy==="update"){window.data=m.data;subs.forEach(function(f){try{f(m.data);}catch(_){}});}
+if(m.positron==="result"&&pending[m.id]){var p=pending[m.id];delete pending[m.id];if(m.error)p.rej(new Error(m.error));else p.res(m.result);}
+if(m.positron==="update"){window.data=m.data;subs.forEach(function(f){try{f(m.data);}catch(_){}});}
 });
 })();`;
 

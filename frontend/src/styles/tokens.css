@@ -71,7 +71,7 @@
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 30px -14px rgba(0, 0, 0, 0.7);
 }
 
-/* Deputy additions: semantic states. */
+/* Positron additions: semantic states. */
 :root {
   --ok: #2f7a4b;
   --ok-bg: #e2f1e7;

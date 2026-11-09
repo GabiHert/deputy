@@ -159,7 +159,7 @@ type SettingsDTO struct {
 	MediaRetentionDays int         `json:"mediaRetentionDays"` // 0 keeps media
 	OpenAtLogin        bool        `json:"openAtLogin"`
 	Notify             bool        `json:"notify"`
-	MCPEnabled         bool        `json:"mcpEnabled"` // Claude Code in other projects can use Deputy
+	MCPEnabled         bool        `json:"mcpEnabled"` // Claude Code in other projects can use Positron
 	MediaDir           string      `json:"mediaDir"`   // read only
 	MediaBytes         int64       `json:"mediaBytes"` // read only
 	MediaFiles         int         `json:"mediaFiles"` // read only
@@ -199,7 +199,7 @@ type UpdateStatusDTO struct {
 	Message      string   `json:"message"`
 	Lines        []string `json:"lines"`
 	Seq          int      `json:"seq"`
-	InstalledApp string   `json:"installedApp"` // "" when Deputy does not run from an app bundle
+	InstalledApp string   `json:"installedApp"` // "" when Positron does not run from an app bundle
 }
 
 // MCPStatusDTO is the "Claude Code in other projects" card.
@@ -208,7 +208,7 @@ type MCPStatusDTO struct {
 	Running bool   `json:"running"`
 	URL     string `json:"url"`
 	Error   string `json:"error"`
-	// Command adds Deputy to Claude Code by hand. It holds the token: show it only when asked.
+	// Command adds Positron to Claude Code by hand. It holds the token: show it only when asked.
 	Command string `json:"command"`
 }
 

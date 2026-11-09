@@ -145,7 +145,7 @@ describe("Inbox", () => {
     expect(screen.getByRole("img", { name: "Read" })).toBeInTheDocument();
     expect(screen.getByText("Disappearing messages: 24 hours")).toBeInTheDocument();
 
-    // View-once: one only on the phone, one Deputy can show, but only when asked.
+    // View-once: one only on the phone, one Positron can show, but only when asked.
     expect(screen.getAllByText("View once")).toHaveLength(2);
     expect(screen.getByText("View once video")).toBeInTheDocument();
     expect(screen.getByText("Open it on your phone")).toBeInTheDocument();

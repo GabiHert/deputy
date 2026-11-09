@@ -1,4 +1,4 @@
-// Package update replaces Deputy with the newest GitHub Release: it downloads the release zip
+// Package update replaces Positron with the newest GitHub Release: it downloads the release zip
 // that make release built and published, checks it against the release's SHA256SUMS and its code signature, hands the new
 // app to a detached install script and quits. The script swaps the apps and rolls back if the new
 // one does not start. Nothing is built on this Mac. Adapted from Notted's UpdateService; see
@@ -32,14 +32,14 @@ type Status struct {
 	Message      string
 	Lines        []string // the current run's output, at most maxLines; never nil
 	Seq          int      // sequence number of the last line ever emitted
-	InstalledApp string   // "" when Deputy does not run from an app bundle
+	InstalledApp string   // "" when Positron does not run from an app bundle
 }
 
 // Deps are what the service needs.
 type Deps struct {
 	Version string
-	AppName string          // "Deputy": the bundle is AppName.app
-	Repo    string          // owner/name; "" means GabiHert/deputy
+	AppName string          // "Positron": the bundle is AppName.app
+	Repo    string          // owner/name; "" means GabiHert/positron
 	Env     func() []string // the login shell's environment, for gh
 	Emit    func(event string, data any)
 	Quit    func()
@@ -75,7 +75,7 @@ var (
 	verifyTimeout   = 5 * time.Minute
 	quitDelay       = 1500 * time.Millisecond
 	// staleAfter is how old a staged app must be before startup deletes it: the install script
-	// copies it away within seconds of the old Deputy quitting.
+	// copies it away within seconds of the old Positron quitting.
 	staleAfter = 10 * time.Minute
 )
 
@@ -90,12 +90,12 @@ var errBusy = errors.New("An update is already running.")
 // New returns an idle service.
 func New(d Deps) *Service {
 	if d.AppName == "" {
-		d.AppName = "Deputy"
+		d.AppName = "Positron"
 	}
 	if d.Repo == "" {
-		d.Repo = defaultRepo
+		d.Repo = DefaultRepo
 	}
-	s := &Service{d: d, keys: Keychain{Service: d.AppName + " updates"}, signer: codesign{},
+	s := &Service{d: d, keys: Keychain{Service: KeychainService}, signer: codesign{},
 		executable: os.Executable, state: "idle", lines: []string{}, unzip: ditto}
 	s.gh = newGitHub(d.Repo, s.tokens)
 	s.install = func(pid int, newApp, installedApp, logPath string) error {
@@ -219,7 +219,7 @@ func (s *Service) announce(tag string) {
 	}
 }
 
-// installedApp returns the .app bundle Deputy runs from.
+// installedApp returns the .app bundle Positron runs from.
 func (s *Service) installedApp() (string, bool) {
 	exe, err := s.executable()
 	if err != nil {

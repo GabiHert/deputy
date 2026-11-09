@@ -41,9 +41,9 @@ func (r Repo) git(ctx context.Context, args ...string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-const claudeMD = `# Deputy agent
+const claudeMD = `# Positron agent
 
-You are a WhatsApp agent run by Deputy on behalf of the person who owns this repo.
+You are a WhatsApp agent run by Positron on behalf of the person who owns this repo.
 Your instructions are in INSTRUCTIONS.md. Follow them.
 
 @INSTRUCTIONS.md
@@ -58,8 +58,8 @@ This repo is your memory. Each run starts fresh, so anything you don't write dow
   rather than adding a near copy.
 - Keep files short and factual. Note where a fact came from and when.
 - You may refine INSTRUCTIONS.md when the person corrects you in a chat.
-- Don't run git. Deputy commits your changes after each run.
-- .deputy/ holds chat media for this run. It is not committed. Copy an image out of it only if you
+- Don't run git. Positron commits your changes after each run.
+- .positron/ holds chat media for this run. It is not committed. Copy an image out of it only if you
   need to keep it.
 `
 
@@ -98,21 +98,21 @@ func (r Repo) Init(ctx context.Context) error {
 	if err := r.ensureIgnore(); err != nil {
 		return err
 	}
-	_, _, _ = r.Commit(ctx, "Set up Deputy agent repo")
+	_, _, _ = r.Commit(ctx, "Set up Positron agent repo")
 	return nil
 }
 
 func (r Repo) ensureIgnore() error {
 	p := filepath.Join(r.Dir, ".gitignore")
 	b, _ := os.ReadFile(p)
-	if strings.Contains(string(b), ".deputy/") {
+	if strings.Contains(string(b), ".positron/") {
 		return nil
 	}
 	s := string(b)
 	if s != "" && !strings.HasSuffix(s, "\n") {
 		s += "\n"
 	}
-	return os.WriteFile(p, []byte(s+".deputy/\n.DS_Store\n"), 0o644)
+	return os.WriteFile(p, []byte(s+".positron/\n.DS_Store\n"), 0o644)
 }
 
 // Instructions reads INSTRUCTIONS.md.
@@ -149,7 +149,7 @@ func (r Repo) Commit(ctx context.Context, msg string) (string, []string, error) 
 	if _, err := r.git(ctx, "add", "-A"); err != nil {
 		return "", nil, err
 	}
-	args := []string{"-c", "user.name=Deputy", "-c", "user.email=deputy@localhost", "commit", "-q", "-m", msg}
+	args := []string{"-c", "user.name=Positron", "-c", "user.email=positron@localhost", "commit", "-q", "-m", msg}
 	if _, err := r.git(ctx, args...); err != nil {
 		return "", nil, err
 	}

@@ -98,7 +98,7 @@ func (s *Store) UpdateMessage(chat, id string, f func(*domain.Message) bool) (do
 }
 
 // SaveMessages stores many messages in one transaction. Messages already stored are left alone
-// (history syncs resend what Deputy has). It returns the ones it added.
+// (history syncs resend what Positron has). It returns the ones it added.
 func (s *Store) SaveMessages(ms []domain.Message) ([]domain.Message, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

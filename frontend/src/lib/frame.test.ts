@@ -28,4 +28,10 @@ describe("buildSrcdoc", () => {
     expect(doc.match(/<\/style>/g)?.length).toBe(1);
     expect(doc).not.toContain("bad key");
   });
+
+  it("gives blocks window.positron and keeps window.deputy for blocks written before the rename", () => {
+    const doc = buildSrcdoc({ html: "", data: null });
+    expect(doc).toContain("window.positron={");
+    expect(doc).toContain("window.deputy=window.positron;");
+  });
 });

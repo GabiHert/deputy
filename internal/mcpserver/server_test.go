@@ -65,7 +65,7 @@ func TestResolveChat(t *testing.T) {
 		{"herter", "222@g.us", ""},
 		{"Souza", "5551999994412@s.whatsapp.net", ""},
 		{"+55 (51) 99999-4412", "5551999994412@s.whatsapp.net", ""},
-		{"5511912345678", "5511912345678@s.whatsapp.net", ""}, // a number Deputy hasn't seen
+		{"5511912345678", "5511912345678@s.whatsapp.net", ""}, // a number Positron hasn't seen
 		{"ana", "", "matches 2 chats"},
 		{"nobody", "", "no chat matches"},
 	}

@@ -9,7 +9,7 @@ import (
 )
 
 // resolveChat finds a chat by JID, exact name (any case), phone number or a unique part of its
-// name, in that order. A JID or phone number Deputy hasn't seen yet still resolves, without a name.
+// name, in that order. A JID or phone number Positron hasn't seen yet still resolves, without a name.
 func resolveChat(chats []app.ChatDTO, q string) (app.ChatDTO, error) {
 	q = strings.TrimSpace(q)
 	if q == "" {

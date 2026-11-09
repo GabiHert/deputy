@@ -138,7 +138,7 @@ type Transcriber struct {
 
 // decode16k converts any audio file macOS can read (Ogg Opus included) to 16 kHz mono samples.
 func decode16k(ctx context.Context, tmpDir, in string) ([]float32, error) {
-	f, err := os.CreateTemp(tmpDir, "deputy-*.wav")
+	f, err := os.CreateTemp(tmpDir, "positron-*.wav")
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +230,7 @@ func (s Speaker) Speak(ctx context.Context, text string, lang domain.Language) (
 	if err != nil {
 		return nil, 0, errors.New("voice replies need ffmpeg. Install it with: brew install ffmpeg")
 	}
-	dir, err := os.MkdirTemp(s.TmpDir, "deputy-voice-*")
+	dir, err := os.MkdirTemp(s.TmpDir, "positron-voice-*")
 	if err != nil {
 		return nil, 0, err
 	}

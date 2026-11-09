@@ -1,27 +1,27 @@
 #!/bin/bash
 # Adapted from Notted (internal/integration/install/install.sh); see NOTICE.md.
-# Puts a newly built Deputy.app in place of the installed one after the running Deputy quits.
+# Puts a newly built Positron.app in place of the installed one after the running Positron quits.
 # Usage: install.sh <pid> <new-app> <installed-app>
 # It copies the new app beside the installed one, deletes the new app it was given, swaps the two
 # with renames, and keeps the old copy until the new one is running. Every failure leaves an app at
-# <installed-app> that opens. Deputy asks macOS for no privacy permissions, so a signature change
+# <installed-app> that opens. Positron asks macOS for no privacy permissions, so a signature change
 # needs no permission reset.
-# Environment (all optional): DEPUTY_OPEN, DEPUTY_MV, DEPUTY_QUIT_WAIT (seconds, default 60),
-# DEPUTY_LAUNCH_WAIT (default 20), DEPUTY_LAUNCH_SETTLE (default 2).
+# Environment (all optional): POSITRON_OPEN, POSITRON_MV, POSITRON_QUIT_WAIT (seconds, default 60),
+# POSITRON_LAUNCH_WAIT (default 20), POSITRON_LAUNCH_SETTLE (default 2).
 set -u
 pid=$1
 new=$2
 dest=$3
-open_cmd=${DEPUTY_OPEN:-/usr/bin/open}
-mv_cmd=${DEPUTY_MV:-/bin/mv}
-quit_wait=${DEPUTY_QUIT_WAIT:-60}
-launch_wait=${DEPUTY_LAUNCH_WAIT:-20}
-settle=${DEPUTY_LAUNCH_SETTLE:-2}
+open_cmd=${POSITRON_OPEN:-/usr/bin/open}
+mv_cmd=${POSITRON_MV:-/bin/mv}
+quit_wait=${POSITRON_QUIT_WAIT:-60}
+launch_wait=${POSITRON_LAUNCH_WAIT:-20}
+settle=${POSITRON_LAUNCH_SETTLE:-2}
 staged="$dest.new"
 old="$dest.old"
-exe="$dest/Contents/MacOS/Deputy"
+exe="$dest/Contents/MacOS/Positron"
 here=$(cd "$(dirname "$0")" && pwd)
-cleanup() { case "$here" in */deputy-install-*) rm -rf "$here" ;; esac; }
+cleanup() { case "$here" in */positron-install-*) rm -rf "$here" ;; esac; }
 trap cleanup EXIT
 
 log() { echo "install: $*"; }
@@ -75,9 +75,9 @@ wait_until() {
   "$@"
 }
 
-log "waiting for Deputy (pid $pid) to quit"
+log "waiting for Positron (pid $pid) to quit"
 if ! wait_until "$quit_wait" gone; then
-  log "Deputy did not quit within $quit_wait seconds; nothing changed"
+  log "Positron did not quit within $quit_wait seconds; nothing changed"
   rm -rf "$new"
   exit 1
 fi
@@ -124,6 +124,6 @@ rm -rf "$staged"
 put_back "$dest" "$staged" || restore_failed
 put_back "$old" "$dest" || restore_failed
 rm -rf "$staged"
-log "the new Deputy did not start within $launch_wait seconds; restored the previous version"
+log "the new Positron did not start within $launch_wait seconds; restored the previous version"
 reopen
 exit 1

@@ -144,7 +144,7 @@ func TestAutoReplyIsSentWithPrefixAndCommitted(t *testing.T) {
 	e, st, wa, rn, _ := setup(t, domain.ModeAuto, domain.TriggerMention)
 	rn.res = claude.AgentResult{Reply: "Oi Ana!", Note: "greeted"}
 	rn.write = "knowledge/ana.md"
-	e.HandleIncoming(msg("group1@g.us", "M1", "@deputy oi", true, true))
+	e.HandleIncoming(msg("group1@g.us", "M1", "@positron oi", true, true))
 	r := waitRun(t, e)
 	if r.Status != domain.RunSent {
 		t.Fatalf("status %s, error %q", r.Status, r.Error)
@@ -156,7 +156,7 @@ func TestAutoReplyIsSentWithPrefixAndCommitted(t *testing.T) {
 	if r.Commit == "" || len(r.Files) == 0 {
 		t.Fatalf("expected a commit, got %+v", r)
 	}
-	if !strings.Contains(rn.prompts[0], "NEW [") || !strings.Contains(rn.prompts[0], "Ana: (mentions or replies to the owner) @deputy oi") {
+	if !strings.Contains(rn.prompts[0], "NEW [") || !strings.Contains(rn.prompts[0], "Ana: (mentions or replies to the owner) @positron oi") {
 		t.Fatalf("prompt:\n%s", rn.prompts[0])
 	}
 	// The reply is in the history as the agent's own message.
@@ -222,14 +222,14 @@ func TestAnswerMe(t *testing.T) {
 		t.Fatal(err)
 	}
 	rn.res = claude.AgentResult{Reply: "oi", Note: "answered"}
-	fromDeputy := msg("group1@g.us", "D1", "sent by Deputy", true, false)
-	fromDeputy.FromMe, fromDeputy.FromDeputy = true, true
-	e.HandleIncoming(fromDeputy)
+	fromPositron := msg("group1@g.us", "D1", "sent by Positron", true, false)
+	fromPositron.FromMe, fromPositron.FromPositron = true, true
+	e.HandleIncoming(fromPositron)
 	time.Sleep(200 * time.Millisecond)
 	if len(rn.prompts) != 0 {
-		t.Fatal("a message Deputy sent started a run")
+		t.Fatal("a message Positron sent started a run")
 	}
-	own := msg("group1@g.us", "O1", "deputy, what's on today?", true, false)
+	own := msg("group1@g.us", "O1", "positron, what's on today?", true, false)
 	own.FromMe = true
 	e.HandleIncoming(own)
 	waitRun(t, e)
@@ -265,10 +265,10 @@ func TestImagesMustBeInsideTheRepo(t *testing.T) {
 	}
 }
 
-// TestRealClaude runs the agent through the person's real Claude Code. Opt in with DEPUTY_E2E=1.
+// TestRealClaude runs the agent through the person's real Claude Code. Opt in with POSITRON_E2E=1.
 func TestRealClaude(t *testing.T) {
-	if os.Getenv("DEPUTY_E2E") != "1" {
-		t.Skip("set DEPUTY_E2E=1 to run Claude Code for real")
+	if os.Getenv("POSITRON_E2E") != "1" {
+		t.Skip("set POSITRON_E2E=1 to run Claude Code for real")
 	}
 	e, _, wa, _, a := setup(t, domain.ModeAuto, domain.TriggerMention)
 	e.d.Runner = claude.Runner{}

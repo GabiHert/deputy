@@ -475,7 +475,7 @@ export function useChatMessages(
   return [msgs, reload];
 }
 
-// ---- inbox: Deputy as the owner's own WhatsApp client (internal/app/dto_inbox.go) ----
+// ---- inbox: Positron as the owner's own WhatsApp client (internal/app/dto_inbox.go) ----
 
 export type MessageKind =
   | "text"
@@ -567,7 +567,7 @@ export type ChatMessage = {
   fromMe: boolean;
   fromAgent: boolean;
   agentName: string;
-  /** typed by the owner in Deputy */
+  /** typed by the owner in Positron */
   fromUi: boolean;
   at: number;
   kind: MessageKind;
@@ -586,7 +586,7 @@ export type ChatMessage = {
   revoked: boolean;
   /** came from the phone's history, not live */
   history: boolean;
-  /** a view-once photo, video or voice note; media.downloadable says whether Deputy can show it */
+  /** a view-once photo, video or voice note; media.downloadable says whether Positron can show it */
   viewOnce: boolean;
 };
 
@@ -614,7 +614,7 @@ export type Contact = {
   phone: string;
   initials: string;
   isGroup: boolean;
-  /** Deputy already has messages in this chat */
+  /** Positron already has messages in this chat */
   hasChat: boolean;
 };
 
@@ -641,7 +641,7 @@ export type SendFile = {
   kind?: "" | "image" | "video" | "audio" | "document";
 };
 
-/** A recording from MediaRecorder; Deputy converts it to Ogg Opus with ffmpeg when needed. */
+/** A recording from MediaRecorder; Positron converts it to Ogg Opus with ffmpeg when needed. */
 export type SendVoice = {
   chat: string;
   dataBase64: string;

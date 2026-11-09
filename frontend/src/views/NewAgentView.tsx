@@ -3,7 +3,7 @@ import { api2, useAssistantChats, useChatMessages } from "../api";
 import { Conversation } from "../components/Assistant";
 
 /** NewAgentView creates an agent by chatting with Claude, which reads the chats and writes the agent. */
-const DRAFT = "deputy.newAgentDraft";
+const DRAFT = "positron.newAgentDraft";
 
 /** The draft is the new-agent chat in progress, kept so leaving the page doesn't lose it. */
 const draft = {

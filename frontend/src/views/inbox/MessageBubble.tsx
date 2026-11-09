@@ -94,7 +94,7 @@ export const MessageBubble = memo(function MessageBubble({
                   className="ib-quote"
                   disabled={!m.quoted.found}
                   onClick={() => m.quoted && actions.onJump(m.quoted.id)}
-                  title={m.quoted.found ? "Show the message" : "That message is not in Deputy"}
+                  title={m.quoted.found ? "Show the message" : "That message is not in Positron"}
                 >
                   <span className={`ib-quote__by ib-s${tone(m.quoted.senderJid || m.quoted.senderName, 6)}`}>{m.quoted.senderName}</span>
                   <span className="ib-quote__text">{m.quoted.snippet || kindLabel(m.quoted.kind)}</span>
@@ -454,7 +454,7 @@ function docType(name: string, mime: string): string {
   return sub.length <= 6 ? sub.toUpperCase() : "";
 }
 
-const OLD_FILE = "Arrived before Deputy kept files. Open it on your phone.";
+const OLD_FILE = "Arrived before Positron kept files. Open it on your phone.";
 
 const WAVE = Array.from({ length: 30 }, (_, k) => 4 + Math.round(14 * Math.abs(Math.sin(k * 1.7) * Math.cos(k * 0.6))));
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds and publishes a Deputy release from this Mac. GitHub Actions is not used.
+# Builds and publishes a Positron release from this Mac. GitHub Actions is not used.
 # Usage: make release              next patch version after the newest tag (v0.2.1 → v0.2.2)
 #        make release V=v0.3.0     a version you choose
 #
@@ -12,7 +12,7 @@
 # A failure before step 4 leaves no tag, push or release behind.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-REPO=GabiHert/deputy
+REPO=GabiHert/positron
 ACCOUNT=GabiHert
 
 log() { echo "release: $*"; }
@@ -51,16 +51,16 @@ go test ./internal/...
 bash scripts/build-release.sh "$tag"
 
 log "tagging and pushing $tag"
-git tag -a "$tag" -m "Deputy $tag"
+git tag -a "$tag" -m "Positron $tag"
 git push -q origin main
 git push -q origin "$tag"
 
 notes="Built and signed on the developer's Mac with make release."
-if ! codesign -dvv build/bin/Deputy.app 2>&1 | grep -q '^TeamIdentifier=[A-Z0-9]'; then
+if ! codesign -dvv build/bin/Positron.app 2>&1 | grep -q '^TeamIdentifier=[A-Z0-9]'; then
   notes="$notes Signed ad hoc and not notarized."
 fi
 prerelease=()
 case "$tag" in *-*) prerelease=(--prerelease) ;; esac
-gh release create "$tag" build/release/* --repo "$REPO" --title "Deputy $tag" --verify-tag \
+gh release create "$tag" build/release/* --repo "$REPO" --title "Positron $tag" --verify-tag \
   --generate-notes --notes "$notes" ${prerelease[@]+"${prerelease[@]}"}
 log "published https://github.com/$REPO/releases/tag/$tag"

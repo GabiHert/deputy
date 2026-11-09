@@ -8,7 +8,7 @@
         <key>CFBundleExecutable</key>
         <string>{{.OutputFilename}}</string>
         <key>CFBundleIdentifier</key>
-        <string>tech.bhlabs.deputy</string>
+        <string>tech.bhlabs.positron</string>
         <key>CFBundleVersion</key>
         <string>{{.Info.ProductVersion}}</string>
         <key>CFBundleGetInfoString</key>
@@ -24,7 +24,7 @@
         <key>NSHumanReadableCopyright</key>
         <string>{{.Info.Copyright}}</string>
         <key>NSMicrophoneUsageDescription</key>
-        <string>Deputy uses the microphone only while you record a voice note to send in a WhatsApp chat.</string>
+        <string>Positron uses the microphone only while you record a voice note to send in a WhatsApp chat.</string>
         {{if .Info.FileAssociations}}
         <key>CFBundleDocumentTypes</key>
         <array>

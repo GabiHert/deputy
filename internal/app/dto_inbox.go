@@ -1,6 +1,6 @@
 package app
 
-// The inbox: Deputy as a full WhatsApp client for the owner. Times are Unix milliseconds.
+// The inbox: Positron as a full WhatsApp client for the owner. Times are Unix milliseconds.
 
 // Inbox events.
 const (
@@ -44,7 +44,7 @@ type InboxChatDTO struct {
 	AgentID    string `json:"agentId"` // the agent that answers this chat, "" for none
 	AgentName  string `json:"agentName"`
 	// Disappearing is the chat's disappearing-messages timer in seconds (86400 = 24 hours), 0 when
-	// off or not known yet. Deputy's messages carry it, as the phone's do.
+	// off or not known yet. Positron's messages carry it, as the phone's do.
 	Disappearing int `json:"disappearing"`
 }
 
@@ -88,9 +88,9 @@ type ChatMessageDTO struct {
 	SenderJID  string        `json:"senderJid"`
 	SenderName string        `json:"senderName"` // "" for the owner
 	FromMe     bool          `json:"fromMe"`
-	FromAgent  bool          `json:"fromAgent"` // sent by one of Deputy's agents
+	FromAgent  bool          `json:"fromAgent"` // sent by one of Positron's agents
 	AgentName  string        `json:"agentName"`
-	FromUI     bool          `json:"fromUi"` // typed by the owner in Deputy
+	FromUI     bool          `json:"fromUi"` // typed by the owner in Positron
 	At         int64         `json:"at"`
 	Kind       string        `json:"kind"` // "text" | "image" | "voice" | "audio" | "video" | "document" | "sticker" | "other"
 	Text       string        `json:"text"` // body or caption ("" when deleted)
@@ -106,7 +106,7 @@ type ChatMessageDTO struct {
 	Edited  bool   `json:"edited"`
 	Revoked bool   `json:"revoked"` // deleted for everyone
 	History bool   `json:"history"` // came from the phone's history, not live
-	// ViewOnce is a view-once photo, video or voice note. Media.Downloadable says whether Deputy
+	// ViewOnce is a view-once photo, video or voice note. Media.Downloadable says whether Positron
 	// can show it (once, on request); otherwise it is only on the phone.
 	ViewOnce bool `json:"viewOnce"`
 }
@@ -114,7 +114,7 @@ type ChatMessageDTO struct {
 // MessagePageDTO is one page of a chat, newest first. Pass Cursor back as before for the next page.
 type MessagePageDTO struct {
 	Messages []ChatMessageDTO `json:"messages"`
-	Cursor   string           `json:"cursor"`  // "" when Deputy has no older messages stored
+	Cursor   string           `json:"cursor"`  // "" when Positron has no older messages stored
 	HasMore  bool             `json:"hasMore"` // false: call LoadOlder to ask the phone for more
 }
 
@@ -134,7 +134,7 @@ type ContactDTO struct {
 	Phone    string `json:"phone"` // "+5551999991234", "" when unknown
 	Initials string `json:"initials"`
 	IsGroup  bool   `json:"isGroup"`
-	HasChat  bool   `json:"hasChat"` // Deputy already has this chat
+	HasChat  bool   `json:"hasChat"` // Positron already has this chat
 }
 
 // SendTextDTO is a text message from the owner.
@@ -160,7 +160,7 @@ type SendFileDTO struct {
 }
 
 // SendVoiceDTO is a voice note the owner recorded in the window (any format the webview records;
-// Deputy converts it to Ogg Opus with ffmpeg when needed).
+// Positron converts it to Ogg Opus with ffmpeg when needed).
 type SendVoiceDTO struct {
 	Chat       string `json:"chat"`
 	DataBase64 string `json:"dataBase64"`

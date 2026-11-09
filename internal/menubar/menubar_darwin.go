@@ -9,10 +9,10 @@ package menubar
 */
 import "C"
 
-func install()         { C.DeputyMenuBarInstall() }
-func setWaiting(n int) { C.DeputyMenuBarSetWaiting(C.int(n)) }
-func setUnread(n int)  { C.DeputyMenuBarSetUnread(C.int(n)) }
-func focused() bool    { return C.DeputyAppFocused() != 0 }
+func install()         { C.PositronMenuBarInstall() }
+func setWaiting(n int) { C.PositronMenuBarSetWaiting(C.int(n)) }
+func setUnread(n int)  { C.PositronMenuBarSetUnread(C.int(n)) }
+func focused() bool    { return C.PositronAppFocused() != 0 }
 
-//export deputyMenuBarAction
-func deputyMenuBarAction(action C.int) { dispatchActive(int(action)) }
+//export positronMenuBarAction
+func positronMenuBarAction(action C.int) { dispatchActive(int(action)) }

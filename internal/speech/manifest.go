@@ -18,7 +18,7 @@ import (
 
 // defaultManifestJSON is the manifest pinned to this build: the upstream
 // sherpa-onnx model files with verified sha256 and sizes. A local or hosted
-// manifest can be substituted at runtime via DEPUTY_MODEL_MANIFEST (an
+// manifest can be substituted at runtime via POSITRON_MODEL_MANIFEST (an
 // http(s):// URL or a filesystem path), which tests use to point at local copies.
 //
 //go:embed manifest.json
@@ -66,11 +66,11 @@ func (m *DownloadManifest) forLanguage(lang domain.Language) []ModelArtifact {
 }
 
 // loadManifest resolves the download manifest, honoring the
-// DEPUTY_MODEL_MANIFEST override (http(s):// or a local path) and falling
+// POSITRON_MODEL_MANIFEST override (http(s):// or a local path) and falling
 // back to the embedded default.
 func loadManifest() (*DownloadManifest, error) {
 	raw := defaultManifestJSON
-	if override := strings.TrimSpace(os.Getenv("DEPUTY_MODEL_MANIFEST")); override != "" {
+	if override := strings.TrimSpace(os.Getenv("POSITRON_MODEL_MANIFEST")); override != "" {
 		b, err := readSource(override)
 		if err != nil {
 			return nil, fmt.Errorf("load model manifest from %q: %w", override, err)

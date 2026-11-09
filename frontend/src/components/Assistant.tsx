@@ -793,7 +793,7 @@ function AgentCard({
                   </button>
                 </div>
               ) : (
-                p.repoPath || "Chosen by Deputy"
+                p.repoPath || "Chosen by Positron"
               )}
             </dd>
           </dl>
@@ -1324,9 +1324,9 @@ export function ClaudePanel({
   const [activeId, setActiveId] = useState("");
   const [renamingId, setRenamingId] = useState("");
   const [headRename, setHeadRename] = useState(false);
-  const [listOpen, setListOpenState] = useState(() => localStorage.getItem("deputy.sessionList") !== "hidden");
+  const [listOpen, setListOpenState] = useState(() => localStorage.getItem("positron.sessionList") !== "hidden");
   const setListOpen = (v: boolean) => {
-    localStorage.setItem("deputy.sessionList", v ? "shown" : "hidden");
+    localStorage.setItem("positron.sessionList", v ? "shown" : "hidden");
     setListOpenState(v);
   };
   const [err, setErr] = useState("");

@@ -11,8 +11,8 @@ import (
 )
 
 // View-once ("visualização única") photos, videos and voice notes. WhatsApp mostly keeps them
-// from linked devices: the phone gets the media, Deputy gets either nothing (an "unavailable"
-// stanza of type view_once) or the message without what a download needs. Deputy still shows
+// from linked devices: the phone gets the media, Positron gets either nothing (an "unavailable"
+// stanza of type view_once) or the message without what a download needs. Positron still shows
 // that one arrived, and keeps the media when it did come.
 
 // viewOnceKind decides how a view-once message is kept. kind is its inner media ("image",
@@ -38,7 +38,7 @@ func viewOnceKind(m *waE2E.Message) (kind string, downloadable bool) {
 	return "image", false
 }
 
-// viewOncePlaceholder fills in a view-once message Deputy cannot download: what kind it is, its caption
+// viewOncePlaceholder fills in a view-once message Positron cannot download: what kind it is, its caption
 // and what it replies to, but no media.
 func viewOncePlaceholder(in *Incoming, m *waE2E.Message, kind string) *waE2E.ContextInfo {
 	in.Kind, in.ViewOnce = kind, true
@@ -73,7 +73,7 @@ func fieldNames(m *waE2E.Message) []string {
 	return out
 }
 
-// logSkipped logs, once per distinct shape, a message Deputy does not show, so what arrives
+// logSkipped logs, once per distinct shape, a message Positron does not show, so what arrives
 // (view-once variants in particular) can be seen in the log.
 func (c *Client) logSkipped(e *events.Message) {
 	raw, inner := fieldNames(e.RawMessage), fieldNames(e.Message)

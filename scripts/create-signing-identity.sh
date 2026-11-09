@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Creates the self-signed code-signing identity "Deputy Local Signing" once, so every build of
-# Deputy keeps the same signature and macOS keeps its microphone and screen recording grants.
+# Creates the self-signed code-signing identity "Positron Local Signing" once, so every build of
+# Positron keeps the same signature and macOS keeps its microphone and screen recording grants.
 set -euo pipefail
-NAME="Deputy Local Signing"
-KEYCHAIN="${DEPUTY_KEYCHAIN:-$HOME/Library/Keychains/login.keychain-db}"
-OPENSSL="${DEPUTY_OPENSSL:-/usr/bin/openssl}"
-UNTRUSTED='The certificate "Deputy Local Signing" is in your keychain, but macOS does not trust it for code signing. Open Keychain Access, double-click "Deputy Local Signing", open Trust, and set Code Signing to Always Trust. Then run make build.'
+NAME="Positron Local Signing"
+KEYCHAIN="${POSITRON_KEYCHAIN:-$HOME/Library/Keychains/login.keychain-db}"
+OPENSSL="${POSITRON_OPENSSL:-/usr/bin/openssl}"
+UNTRUSTED='The certificate "Positron Local Signing" is in your keychain, but macOS does not trust it for code signing. Open Keychain Access, double-click "Positron Local Signing", open Trust, and set Code Signing to Always Trust. Then run make build.'
 
 # has_identity [-v]: reads all of the listing before matching, so grep never closes the pipe early.
 has_identity() {
@@ -20,7 +20,7 @@ if ! command -v security >/dev/null 2>&1; then
 fi
 
 if has_identity -v; then
-  echo 'The code-signing identity "Deputy Local Signing" already exists. Nothing to do.'
+  echo 'The code-signing identity "Positron Local Signing" already exists. Nothing to do.'
   exit 0
 fi
 
@@ -31,7 +31,7 @@ fi
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-echo "Creating the code-signing identity \"Deputy Local Signing\" in $KEYCHAIN."
+echo "Creating the code-signing identity \"Positron Local Signing\" in $KEYCHAIN."
 
 cat >"$tmp/req.cnf" <<'CNF'
 [req]
@@ -39,7 +39,7 @@ distinguished_name=dn
 prompt=no
 x509_extensions=ext
 [dn]
-CN=Deputy Local Signing
+CN=Positron Local Signing
 [ext]
 basicConstraints=critical,CA:false
 keyUsage=critical,digitalSignature
@@ -52,12 +52,12 @@ legacy=""
 if "$OPENSSL" version | grep -q '^OpenSSL 3'; then
   legacy="-legacy"
 fi
-DEPUTY_P12_PASS="$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 24 || true)"
-export DEPUTY_P12_PASS
+POSITRON_P12_PASS="$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 24 || true)"
+export POSITRON_P12_PASS
 # shellcheck disable=SC2086
-"$OPENSSL" pkcs12 -export $legacy -inkey "$tmp/key.pem" -in "$tmp/cert.pem" -name "$NAME" -out "$tmp/id.p12" -passout env:DEPUTY_P12_PASS
+"$OPENSSL" pkcs12 -export $legacy -inkey "$tmp/key.pem" -in "$tmp/cert.pem" -name "$NAME" -out "$tmp/id.p12" -passout env:POSITRON_P12_PASS
 
-security import "$tmp/id.p12" -k "$KEYCHAIN" -P "$DEPUTY_P12_PASS" -T /usr/bin/codesign
+security import "$tmp/id.p12" -k "$KEYCHAIN" -P "$POSITRON_P12_PASS" -T /usr/bin/codesign
 
 echo "macOS now asks for your login password to trust the certificate for code signing."
 if ! security add-trusted-cert -r trustRoot -p codeSign -k "$KEYCHAIN" "$tmp/cert.pem"; then
@@ -69,5 +69,5 @@ if ! has_identity -v; then
   echo "$UNTRUSTED"
   exit 1
 fi
-echo 'Created the code-signing identity "Deputy Local Signing". Run make build: macOS asks for the microphone and Screen & System Audio Recording permissions once more, then keeps them across builds and updates.'
+echo 'Created the code-signing identity "Positron Local Signing". Run make build: macOS asks for the microphone and Screen & System Audio Recording permissions once more, then keeps them across builds and updates.'
 exit 0

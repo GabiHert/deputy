@@ -1,7 +1,7 @@
-// Package assistant runs Deputy's Claude chats: the chats in Activity, the New agent chat,
+// Package assistant runs Positron's Claude chats: the chats in Activity, the New agent chat,
 // an agent's "Change with Claude" chat and the board's own chat. Each runs the person's
-// claude command with only Deputy's tools, served over MCP from this process. Claude can
-// read Deputy's data; anything that changes it is a card the person clicks.
+// claude command with only Positron's tools, served over MCP from this process. Claude can
+// read Positron's data; anything that changes it is a card the person clicks.
 package assistant
 
 import (
@@ -415,7 +415,7 @@ func composePrompt(notes []string, text string) string {
 	if len(notes) == 0 {
 		return text
 	}
-	return "[Deputy, what happened in this chat since your last answer: " + strings.Join(notes, " ") + "]\n\n" + text
+	return "[Positron, what happened in this chat since your last answer: " + strings.Join(notes, " ") + "]\n\n" + text
 }
 
 // ---- cards ----

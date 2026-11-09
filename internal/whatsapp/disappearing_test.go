@@ -133,11 +133,11 @@ func TestTimerFromIncomingMessage(t *testing.T) {
 	if got := c.timer(chat); got.Seconds != day || len(*ups) != 1 {
 		t.Fatalf("timer %+v after %d updates", got, len(*ups))
 	}
-	// Deputy's own messages are never read for it.
+	// Positron's own messages are never read for it.
 	c.learnFromMessage(&events.Message{Message: &waE2E.Message{ExtendedTextMessage: &waE2E.ExtendedTextMessage{
-		ContextInfo: &waE2E.ContextInfo{Expiration: proto.Uint32(7 * day)}}}}, Incoming{ID: "M4", Chat: chat, FromDeputy: true}, nil)
+		ContextInfo: &waE2E.ContextInfo{Expiration: proto.Uint32(7 * day)}}}}, Incoming{ID: "M4", Chat: chat, FromPositron: true}, nil)
 	if got := c.timer(chat); got.Seconds != day {
-		t.Fatalf("learned from Deputy's own message: %+v", got)
+		t.Fatalf("learned from Positron's own message: %+v", got)
 	}
 }
 

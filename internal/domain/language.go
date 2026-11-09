@@ -8,7 +8,7 @@ const (
 	LangEN   Language = "en"
 )
 
-// Languages lists the languages Deputy can transcribe, in display order.
+// Languages lists the languages Positron can transcribe, in display order.
 var Languages = []Language{LangPTBR, LangEN}
 
 // Label is the language's display name.

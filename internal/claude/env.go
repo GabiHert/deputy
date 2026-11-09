@@ -1,5 +1,5 @@
 // Copied from github.com/brienze1/quant (internal/application/service/job_manager.go), MIT License,
-// Copyright (c) 2026 Luis Brienze. Modified for Deputy; see NOTICE.md.
+// Copyright (c) 2026 Luis Brienze. Modified for Positron; see NOTICE.md.
 
 package claude
 
@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-const envMarker = "__DEPUTY_ENV_BEGIN__"
+const envMarker = "__POSITRON_ENV_BEGIN__"
 
 var (
 	shellTimeout = 10 * time.Second

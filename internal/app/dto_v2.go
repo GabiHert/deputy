@@ -159,7 +159,7 @@ type SettingChangeDTO struct {
 	Label string `json:"label"`
 	From  string `json:"from"`
 	To    string `json:"to"`
-	Value string `json:"value"` // the raw new value Deputy applies, like "auto" or "true"
+	Value string `json:"value"` // the raw new value Positron applies, like "auto" or "true"
 }
 
 // ChangeProposalDTO is a change to an existing agent.

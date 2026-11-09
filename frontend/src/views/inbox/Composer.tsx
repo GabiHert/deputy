@@ -562,7 +562,7 @@ function VoiceRecorder({
         const name = (e as { name?: string })?.name;
         setErr(
           name === "NotAllowedError"
-            ? "Deputy can't use the microphone. Allow it in System Settings › Privacy & Security › Microphone, then try again."
+            ? "Positron can't use the microphone. Allow it in System Settings › Privacy & Security › Microphone, then try again."
             : `Could not start recording: ${errText(e)}`,
         );
         setState("error");

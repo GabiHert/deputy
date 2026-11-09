@@ -43,7 +43,7 @@ type Deps struct {
 	Update  *update.Service
 
 	// The inbox's macOS side.
-	Focused           func() bool                              // a Deputy window has the keyboard focus
+	Focused           func() bool                              // a Positron window has the keyboard focus
 	NotifyChat        func(chat, title, subtitle, body string) // show a message notification
 	ClearNotification func(id string)                          // take a delivered notification away
 	OnUnreadTotal     func(total int)                          // the Dock badge and menu bar
@@ -365,7 +365,7 @@ func (b *Backend) SaveAgent(d app.AgentDTO) (app.AgentDTO, error) {
 		if err := repo.SetInstructions(d.Instructions); err != nil {
 			return d, err
 		}
-		_, _, _ = repo.Commit(ctx, a.Name+": instructions edited in Deputy")
+		_, _, _ = repo.Commit(ctx, a.Name+": instructions edited in Positron")
 	}
 	// A chat belongs to one agent: take this agent's chats away from the others.
 	mine := map[string]bool{}

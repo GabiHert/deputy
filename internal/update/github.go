@@ -15,9 +15,12 @@ import (
 )
 
 const (
-	defaultRepo = "GabiHert/deputy"
-	apiBase     = "https://api.github.com"
-	sumsName    = "SHA256SUMS"
+	// DefaultRepo is where releases come from.
+	DefaultRepo = "GabiHert/positron"
+	// KeychainService names the keychain item that keeps the GitHub token for updates.
+	KeychainService = "Positron updates"
+	apiBase         = "https://api.github.com"
+	sumsName        = "SHA256SUMS"
 )
 
 // Release is the newest published release.
@@ -52,7 +55,7 @@ type GitHub struct {
 
 func newGitHub(repo string, tokens func(ctx context.Context, owner string) []string) *GitHub {
 	g := &GitHub{Repo: repo, BaseURL: apiBase, Client: &http.Client{}, Tokens: tokens, AssetSuffixes: assetSuffixes()}
-	if v := os.Getenv("DEPUTY_UPDATE_REPO"); v != "" {
+	if v := os.Getenv("POSITRON_UPDATE_REPO"); v != "" {
 		g.Repo = v
 	}
 	return g
@@ -85,7 +88,7 @@ func (g *GitHub) Latest(ctx context.Context) (Release, error) {
 		} `json:"assets"`
 	}
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 4<<20)).Decode(&body); err != nil || body.Tag == "" {
-		return Release{}, fmt.Errorf("GitHub sent an answer Deputy could not read for %s.", g.Repo)
+		return Release{}, fmt.Errorf("GitHub sent an answer Positron could not read for %s.", g.Repo)
 	}
 	r := Release{Tag: body.Tag, Name: strings.TrimSpace(body.Name), Notes: strings.TrimSpace(body.Body),
 		Date: body.PublishedAt, URL: body.HTMLURL}
@@ -105,7 +108,7 @@ func (g *GitHub) Latest(ctx context.Context) (Release, error) {
 		return r, fmt.Errorf("Release %s has no file for this Mac (one ending in %s).", r.Tag, strings.Join(g.AssetSuffixes, " or "))
 	}
 	if r.Sums.ID == 0 {
-		return r, fmt.Errorf("Release %s has no %s, so Deputy cannot check the download.", r.Tag, sumsName)
+		return r, fmt.Errorf("Release %s has no %s, so Positron cannot check the download.", r.Tag, sumsName)
 	}
 	return r, nil
 }
@@ -137,7 +140,7 @@ func (g *GitHub) get(ctx context.Context, url, accept string) (*http.Response, e
 			drain(resp)
 		}
 	}
-	return nil, fmt.Errorf("Deputy couldn't read the releases of %s on GitHub. Add a GitHub token below, or make the repo public.", g.Repo)
+	return nil, fmt.Errorf("Positron couldn't read the releases of %s on GitHub. Add a GitHub token below, or make the repo public.", g.Repo)
 }
 
 func (g *GitHub) request(ctx context.Context, url, accept, token string) (*http.Response, error) {
@@ -147,13 +150,13 @@ func (g *GitHub) request(ctx context.Context, url, accept, token string) (*http.
 	}
 	req.Header.Set("Accept", accept)
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-	req.Header.Set("User-Agent", "Deputy-updater")
+	req.Header.Set("User-Agent", "Positron-updater")
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	resp, err := g.Client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Deputy could not reach GitHub: %v", err)
+		return nil, fmt.Errorf("Positron could not reach GitHub: %v", err)
 	}
 	return resp, nil
 }

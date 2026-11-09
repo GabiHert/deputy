@@ -22,8 +22,8 @@ import { applyMessage, firstName, sortChats } from "./helpers";
 import { NewChatDialog } from "./NewChatDialog";
 import "./inbox.css";
 
-const LAST_CHAT = "deputy.inbox.chat";
-const PANEL = "deputy.claudePanel.inbox";
+const LAST_CHAT = "positron.inbox.chat";
+const PANEL = "positron.claudePanel.inbox";
 
 /** debounce runs fn at most once per ms, at the end. */
 function useDebounced(fn: () => void, ms: number): () => void {

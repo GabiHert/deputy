@@ -23,7 +23,7 @@ export function ChatsView({
     return (
       <div className="chats-scroll">
         <div className="page">
-          <p className="muted">Starting Deputy…</p>
+          <p className="muted">Starting Positron…</p>
         </div>
       </div>
     );
@@ -86,7 +86,7 @@ function ConnectScreen({ status }: { status: Status }) {
       <header className="page__head page__head--narrow">
         <h1>{wa.state === "disconnected" ? "Reconnecting to WhatsApp" : "Connect your WhatsApp"}</h1>
         <p className="lede">
-          Deputy links to your own number as a linked device, the same way WhatsApp Web does. Your agents then answer only the
+          Positron links to your own number as a linked device, the same way WhatsApp Web does. Your agents then answer only the
           chats you give them.
         </p>
       </header>
@@ -112,7 +112,7 @@ function ConnectScreen({ status }: { status: Status }) {
             )}
           </ol>
           <p className="muted small">
-            Deputy stays linked when you quit it. To unlink, use <strong>Log out</strong> in Settings or remove it from Linked devices
+            Positron stays linked when you quit it. To unlink, use <strong>Log out</strong> in Settings or remove it from Linked devices
             on your phone.
           </p>
           <div className="row">

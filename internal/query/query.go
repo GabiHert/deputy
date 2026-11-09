@@ -1,5 +1,5 @@
 // Package query is the board engine's read-only data layer. Board blocks, custom HTML
-// blocks and Claude chats all read Deputy's data through these named queries, so a
+// blocks and Claude chats all read Positron's data through these named queries, so a
 // live board never needs Claude to fetch or refresh anything.
 package query
 
@@ -112,7 +112,7 @@ var specs = []Spec{
 		{Name: "agent", Kind: "string"},
 		{Name: "limit", Kind: "int", Doc: "default 50, at most 200"},
 	}},
-	{Name: "media.usage", Shape: ShapeGroups, Doc: "Files and megabytes of chat media Deputy keeps."},
+	{Name: "media.usage", Shape: ShapeGroups, Doc: "Files and megabytes of chat media Positron keeps."},
 }
 
 var statuses = []string{"running", "sent", "waiting", "discarded", "quiet", "learned", "failed"}

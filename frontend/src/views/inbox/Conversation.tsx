@@ -180,7 +180,7 @@ export function Conversation({
     async (id: string) => {
       const found = await ensure(id);
       if (!found) {
-        setErr("That message is older than what Deputy has. Scroll up to load more.");
+        setErr("That message is older than what Positron has. Scroll up to load more.");
         return;
       }
       stuck.current = false;
@@ -329,7 +329,7 @@ export function Conversation({
           <span className="ib-conv__line">
             <span className={statusLive ? "ib-conv__status ib-conv__status--live" : "ib-conv__status"}>{status}</span>
             {chat.disappearing > 0 && (
-              <span className="ib-conv__timer" title="Messages in this chat disappear after this time. Deputy's messages follow it too.">
+              <span className="ib-conv__timer" title="Messages in this chat disappear after this time. Positron's messages follow it too.">
                 <Icon name="timer" size={12} />
                 Disappearing messages: {disappearingLabel(chat.disappearing)}
               </span>

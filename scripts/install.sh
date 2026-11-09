@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
-# make install: checks the Mac, signs, builds and installs Deputy, then opens it.
-# Environment (all optional): DEPUTY_INSTALL_DIR (default /Applications), DEPUTY_HOME (default
-# ~/Library/Application Support/Deputy), DEPUTY_SKIP_SIGNING_SETUP=1, DEPUTY_NO_OPEN=1, DEPUTY_QUIT_WAIT (seconds, default 15),
-# DEPUTY_MV (the rename command, default mv), DEPUTY_CODESIGN, DEPUTY_TCCUTIL, DEPUTY_PLISTBUDDY
+# make install: checks the Mac, signs, builds and installs Positron, then opens it.
+# Environment (all optional): POSITRON_INSTALL_DIR (default /Applications), POSITRON_HOME (default
+# ~/Library/Application Support/Positron), POSITRON_SKIP_SIGNING_SETUP=1, POSITRON_NO_OPEN=1, POSITRON_QUIT_WAIT (seconds, default 15),
+# POSITRON_MV (the rename command, default mv), POSITRON_CODESIGN, POSITRON_TCCUTIL, POSITRON_PLISTBUDDY
 # (the macOS tools that read the signature, reset permissions and read the bundle id).
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/.." && pwd -P)
-install_dir=${DEPUTY_INSTALL_DIR:-/Applications}
-deputy_home=${DEPUTY_HOME:-$HOME/Library/Application Support/Deputy}
-quit_wait=${DEPUTY_QUIT_WAIT:-15}
-mv_cmd=${DEPUTY_MV:-mv}
-codesign_cmd=${DEPUTY_CODESIGN:-/usr/bin/codesign}
-tccutil_cmd=${DEPUTY_TCCUTIL:-/usr/bin/tccutil}
-plistbuddy_cmd=${DEPUTY_PLISTBUDDY:-/usr/libexec/PlistBuddy}
-app="$install_dir/Deputy.app"
+install_dir=${POSITRON_INSTALL_DIR:-/Applications}
+positron_home=${POSITRON_HOME:-$HOME/Library/Application Support/Positron}
+quit_wait=${POSITRON_QUIT_WAIT:-15}
+mv_cmd=${POSITRON_MV:-mv}
+codesign_cmd=${POSITRON_CODESIGN:-/usr/bin/codesign}
+tccutil_cmd=${POSITRON_TCCUTIL:-/usr/bin/tccutil}
+plistbuddy_cmd=${POSITRON_PLISTBUDDY:-/usr/libexec/PlistBuddy}
+app="$install_dir/Positron.app"
 staged="$app.new"
 old="$app.old"
 
@@ -49,7 +49,7 @@ check_macos() {
   if at_least "$v" 14 0 && [ "$arch" = arm64 ]; then
     ok "macOS $v on Apple silicon"
   else
-    need macOS "Deputy needs macOS 14 or later on an Apple silicon Mac."
+    need macOS "Positron needs macOS 14 or later on an Apple silicon Mac."
   fi
 }
 
@@ -123,7 +123,7 @@ check_claude() {
   if [ -n "$found" ]; then
     ok "claude"
   else
-    echo "warning  claude: Deputy needs Claude Code to run agents. Install it from claude.com/claude-code and log in."
+    echo "warning  claude: Positron needs Claude Code to run agents. Install it from claude.com/claude-code and log in."
   fi
 }
 
@@ -156,10 +156,10 @@ if [ -e "$old" ] || [ -L "$old" ]; then
 fi
 
 # Signing: create the local certificate once, and carry on ad hoc if that fails.
-if [ "${DEPUTY_SKIP_SIGNING_SETUP:-}" != 1 ]; then
+if [ "${POSITRON_SKIP_SIGNING_SETUP:-}" != 1 ]; then
   identity=$(bash "$root/scripts/signing-identity.sh" 2>/dev/null) || identity=
   if [ -z "$identity" ] || [ "$identity" = "-" ]; then
-    echo 'Creating the "Deputy Local Signing" certificate. macOS asks for your login password once, so it can trust the certificate for signing Deputy.'
+    echo 'Creating the "Positron Local Signing" certificate. macOS asks for your login password once, so it can trust the certificate for signing Positron.'
     if ! bash "$root/scripts/create-signing-identity.sh"; then
       echo 'Continuing without the certificate: this build is signed ad hoc, and macOS may ask for permissions again after each update.'
     fi
@@ -168,24 +168,24 @@ fi
 
 make -C "$root" build
 
-built="$root/build/bin/Deputy.app"
+built="$root/build/bin/Positron.app"
 if [ ! -d "$built" ]; then
   echo "make build finished, but $built is missing. Nothing was installed."
   exit 1
 fi
 
-running() { pgrep -x Deputy >/dev/null 2>&1; }
+running() { pgrep -x Positron >/dev/null 2>&1; }
 
 if running; then
-  echo "Quitting Deputy to replace it."
-  osascript -e 'quit app "Deputy"' >/dev/null 2>&1 || true
+  echo "Quitting Positron to replace it."
+  osascript -e 'quit app "Positron"' >/dev/null 2>&1 || true
   n=$((quit_wait * 5))
   while [ "$n" -gt 0 ] && running; do
     sleep 0.2
     n=$((n - 1))
   done
   if running; then
-    echo "Deputy is still running. Quit it, then run make install again."
+    echo "Positron is still running. Quit it, then run make install again."
     exit 1
   fi
 fi
@@ -197,7 +197,7 @@ rename() {
 }
 install_failed() {
   rm -rf "$staged"
-  echo "Install failed; your previous Deputy is unchanged."
+  echo "Install failed; your previous Positron is unchanged."
   exit 1
 }
 
@@ -209,7 +209,7 @@ requirement() {
 # signature change the stored one never matches and switching it on does nothing. A failure only
 # gets logged.
 reset_permissions() {
-  # Deputy asks macOS for no privacy permissions, so there is nothing to reset.
+  # Positron asks macOS for no privacy permissions, so there is nothing to reset.
   return 0
 }
 
@@ -226,7 +226,7 @@ if [ -e "$app" ] || [ -L "$app" ]; then
   if ! rename "$staged" "$app"; then
     if ! rename "$old" "$app"; then
       rm -rf "$staged"
-      echo "Install failed, and the previous Deputy could not be put back. It is at $old. Move it back to $app in Finder."
+      echo "Install failed, and the previous Positron could not be put back. It is at $old. Move it back to $app in Finder."
       exit 1
     fi
     install_failed
@@ -237,13 +237,13 @@ else
 fi
 if [ "$reset_needed" -eq 1 ]; then reset_permissions "$app"; fi
 
-# Save the clone, so Update Deputy knows which folder to pull.
+# Save the clone, so Update Positron knows which folder to pull.
 source_dir=$(git -C "$root" rev-parse --show-toplevel 2>/dev/null) || source_dir=$root
-if mkdir -p "$deputy_home" 2>/dev/null; then
-  printf '%s\n' "$source_dir" >"$deputy_home/install-source" 2>/dev/null || true
+if mkdir -p "$positron_home" 2>/dev/null; then
+  printf '%s\n' "$source_dir" >"$positron_home/install-source" 2>/dev/null || true
 fi
 
 echo "Installed $app."
-if [ "${DEPUTY_NO_OPEN:-}" != 1 ]; then
+if [ "${POSITRON_NO_OPEN:-}" != 1 ]; then
   open "$app"
 fi

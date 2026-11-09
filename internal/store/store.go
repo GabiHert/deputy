@@ -1,4 +1,4 @@
-// Package store keeps Deputy's agents, chats, messages and runs in SQLite.
+// Package store keeps Positron's agents, chats, messages and runs in SQLite.
 package store
 
 import (
@@ -283,7 +283,7 @@ func (s *Store) CountRuns(status domain.RunStatus, since time.Time) int {
 func (s *Store) FailRunning() {
 	for _, r := range s.Runs(RunQuery{Status: domain.RunRunning}) {
 		r.Status = domain.RunFailed
-		r.Error = "Deputy quit while this run was going."
+		r.Error = "Positron quit while this run was going."
 		_ = s.SaveRun(r)
 	}
 }

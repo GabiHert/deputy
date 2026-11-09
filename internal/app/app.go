@@ -167,7 +167,7 @@ func (a *App) GetUpdateStatus() UpdateStatusDTO { return a.b.GetUpdateStatus() }
 // CheckForUpdate asks GitHub for the newest release.
 func (a *App) CheckForUpdate() (UpdateStatusDTO, error) { return a.b.CheckForUpdate(a.ctx) }
 
-// StartUpdate downloads, checks and installs the newest release, then quits Deputy. Output arrives
+// StartUpdate downloads, checks and installs the newest release, then quits Positron. Output arrives
 // as EventUpdateOutput events and states as EventUpdateState events.
 func (a *App) StartUpdate() error { return a.b.StartUpdate() }
 
@@ -177,7 +177,7 @@ func (a *App) SetUpdateToken(token string) (UpdateStatusDTO, error) {
 	return a.b.SetUpdateToken(a.ctx, token)
 }
 
-// GetMCPStatus says whether Claude Code in other projects can reach Deputy.
+// GetMCPStatus says whether Claude Code in other projects can reach Positron.
 func (a *App) GetMCPStatus() MCPStatusDTO { return a.b.GetMCPStatus() }
 
 // SetMCPEnabled turns the server for Claude Code in other projects on or off.
@@ -254,7 +254,7 @@ func (a *App) GetMessage(chat, id string) (ChatMessageDTO, error) { return a.b.G
 // MarkChatRead sends read receipts for the chat's unread messages and clears its unread count.
 func (a *App) MarkChatRead(chat string) error { return a.b.MarkChatRead(chat) }
 
-// SetActiveChat tells Deputy which chat is open and visible ("" when none, or the window is
+// SetActiveChat tells Positron which chat is open and visible ("" when none, or the window is
 // hidden): it gets no notifications, its contact's presence is followed and the owner shows online.
 func (a *App) SetActiveChat(jid string) { a.b.SetActiveChat(jid) }
 

@@ -36,12 +36,15 @@ func (b *Backend) AskAgent(ctx context.Context, agentID, chatJID, request string
 	return b.RunDTO(r), nil
 }
 
-const mcpName = "deputy"
+const (
+	mcpName       = "positron"
+	legacyMCPName = "deputy"
+)
 
 func (b *Backend) GetMCPStatus() app.MCPStatusDTO {
 	s := app.MCPStatusDTO{Enabled: b.d.Store.Settings().MCPEnabled}
 	if b.mcp == nil {
-		s.Error = "Deputy is still starting"
+		s.Error = "Positron is still starting"
 		return s
 	}
 	s.URL = b.mcp.URL()
@@ -68,16 +71,16 @@ func (b *Backend) SetMCPEnabled(on bool) (app.MCPStatusDTO, error) {
 
 func (b *Backend) RotateMCPToken() (app.MCPStatusDTO, error) {
 	if b.mcp == nil {
-		return b.GetMCPStatus(), errors.New("Deputy is still starting")
+		return b.GetMCPStatus(), errors.New("Positron is still starting")
 	}
 	_, err := b.mcp.RotateToken()
 	return b.GetMCPStatus(), err
 }
 
-// AddMCPToClaude registers Deputy in the person's Claude Code (user scope), replacing an older entry.
+// AddMCPToClaude registers Positron in the person's Claude Code (user scope), replacing an older entry.
 func (b *Backend) AddMCPToClaude() (string, error) {
 	if b.mcp == nil {
-		return "", errors.New("Deputy is still starting")
+		return "", errors.New("Positron is still starting")
 	}
 	tok, err := b.mcp.Token()
 	if err != nil {
@@ -105,6 +108,8 @@ func (b *Backend) AddMCPToClaude() (string, error) {
 		return strings.TrimSpace(strings.ReplaceAll(string(out), tok, "•••")), err
 	}
 	_, _ = run("mcp", "remove", "--scope", "user", mcpName)
+	// Positron was called Deputy, and so was its entry; the old one points at the same server.
+	_, _ = run("mcp", "remove", "--scope", "user", legacyMCPName)
 	out, err := run(mcpAddArgs(b.mcp.URL(), tok)[1:]...)
 	if err != nil {
 		if out == "" {
@@ -115,7 +120,7 @@ func (b *Backend) AddMCPToClaude() (string, error) {
 	return out, nil
 }
 
-// mcpAddArgs is the claude command that adds Deputy. --header goes last: it takes several values.
+// mcpAddArgs is the claude command that adds Positron. --header goes last: it takes several values.
 func mcpAddArgs(url, token string) []string {
 	return []string{"claude", "mcp", "add", "--transport", "http", "--scope", "user", mcpName, url,
 		"--header", "Authorization: Bearer " + token}

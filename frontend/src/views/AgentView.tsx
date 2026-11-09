@@ -366,7 +366,7 @@ export function AgentView({
               </div>
             ) : (
               <span className="muted small">
-                Pick an empty folder or an existing repo. If it is empty, Deputy sets it up with CLAUDE.md, INSTRUCTIONS.md and a
+                Pick an empty folder or an existing repo. If it is empty, Positron sets it up with CLAUDE.md, INSTRUCTIONS.md and a
                 knowledge folder.
               </span>
             )}

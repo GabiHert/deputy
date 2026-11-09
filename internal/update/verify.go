@@ -33,7 +33,7 @@ func parseSums(r io.Reader) (map[string]string, error) {
 		name = strings.TrimPrefix(strings.TrimSpace(name), "*")
 		sum = strings.ToLower(sum)
 		if !found || name == "" || len(sum) != 64 || strings.Trim(sum, "0123456789abcdef") != "" {
-			return nil, fmt.Errorf("%s has a line Deputy cannot read: %q", sumsName, line)
+			return nil, fmt.Errorf("%s has a line Positron cannot read: %q", sumsName, line)
 		}
 		out[name] = sum
 	}
@@ -56,7 +56,7 @@ func hashFile(path string) (string, error) {
 
 // SigInfo is what codesign says about an app.
 type SigInfo struct {
-	Identifier string // the bundle's signing identifier, such as tech.bhlabs.deputy
+	Identifier string // the bundle's signing identifier, such as tech.bhlabs.positron
 	TeamID     string // "" for ad hoc and self-signed apps
 	Adhoc      bool
 }

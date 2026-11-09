@@ -53,7 +53,7 @@ func ToVoiceNote(ctx context.Context, env []string, tmpDir string, data []byte, 
 	if err != nil {
 		return nil, 0, errors.New("sending voice notes needs ffmpeg. Install it with: brew install ffmpeg")
 	}
-	dir, err := os.MkdirTemp(tmpDir, "deputy-rec-*")
+	dir, err := os.MkdirTemp(tmpDir, "positron-rec-*")
 	if err != nil {
 		return nil, 0, err
 	}

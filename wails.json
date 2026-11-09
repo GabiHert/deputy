@@ -1,13 +1,13 @@
 {
-  "name": "Deputy",
-  "outputfilename": "Deputy",
+  "name": "Positron",
+  "outputfilename": "Positron",
   "frontend:install": "npm ci",
   "frontend:build": "npm run build",
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
   "author": { "name": "BHLabs" },
   "info": {
-    "productName": "Deputy",
+    "productName": "Positron",
     "productVersion": "0.1.0",
     "copyright": "Copyright (c) 2026 BHLabs"
   }

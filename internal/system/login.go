@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-const label = "tech.bhlabs.deputy"
+const label = "tech.bhlabs.positron"
 
-// LoginItem opens Deputy at login through a LaunchAgent.
+// LoginItem opens Positron at login through a LaunchAgent.
 type LoginItem struct{}
 
 func plistPath() string {
@@ -44,7 +44,7 @@ func (LoginItem) Set(on bool) error {
 	}
 	app := appPath()
 	if app == "" {
-		return fmt.Errorf("Deputy must run from its app bundle (make install) to open at login")
+		return fmt.Errorf("Positron must run from its app bundle (make install) to open at login")
 	}
 	plist := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

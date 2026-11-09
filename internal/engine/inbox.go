@@ -14,7 +14,7 @@ import (
 )
 
 // This file is the owner's own WhatsApp client: what changes earlier messages (reactions,
-// receipts, edits, deletions), history syncs, and what the owner does from Deputy's inbox.
+// receipts, edits, deletions), history syncs, and what the owner does from Positron's inbox.
 
 // HandleUpdate applies a change that is not a new message. Presence updates are not the
 // engine's business and are ignored here.
@@ -213,7 +213,7 @@ func (e *Engine) HandleHistory(h whatsapp.History) {
 	e.unread("")
 }
 
-// storeHistory stores one chat's old messages, leaving the ones Deputy has alone, and returns
+// storeHistory stores one chat's old messages, leaving the ones Positron has alone, and returns
 // how many were new.
 func (e *Engine) storeHistory(hc whatsapp.HistoryChat) int {
 	ms := make([]domain.Message, 0, len(hc.Messages))
@@ -272,7 +272,7 @@ func (e *Engine) storeHistory(hc whatsapp.HistoryChat) int {
 
 // ---- the owner's actions ----
 
-// SendOwner sends what the owner wrote in Deputy's inbox and stores it at once. It counts as the
+// SendOwner sends what the owner wrote in Positron's inbox and stores it at once. It counts as the
 // owner's own message, typed by them: an agent with "answer my own messages" on runs for it, just
 // as for one typed on the phone. Agent replies and SendNow never do.
 func (e *Engine) SendOwner(ctx context.Context, chat string, out whatsapp.Outgoing) (domain.Message, error) {

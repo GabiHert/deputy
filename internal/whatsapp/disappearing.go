@@ -13,7 +13,7 @@ import (
 // Disappearing messages. A chat with a timer expects every message to carry it in its
 // ContextInfo; a message without it shows "This message won't disappear. The sender may be using
 // an older version of WhatsApp" on the other side. WhatsApp keeps the timer per chat on each
-// device, so Deputy learns it from what arrives and remembers it (domain.Chat).
+// device, so Positron learns it from what arrives and remembers it (domain.Chat).
 
 // Disappearing is an update (through OnUpdate): a chat's disappearing-messages timer changed.
 type Disappearing struct {
@@ -22,7 +22,7 @@ type Disappearing struct {
 	SetAt   time.Time // when the setting changed; zero when unknown
 }
 
-// Timer is what Deputy knows of a chat's disappearing-messages timer.
+// Timer is what Positron knows of a chat's disappearing-messages timer.
 type Timer struct {
 	Known   bool
 	Seconds uint32 // 0 = off
@@ -54,7 +54,7 @@ func acceptTimer(cur Timer, seen timerSeen) bool {
 	return seen.Seconds > 0
 }
 
-// SetTimerSource gives the client the timers Deputy remembered, read on first use of each chat.
+// SetTimerSource gives the client the timers Positron remembered, read on first use of each chat.
 // Set it before Start.
 func (c *Client) SetTimerSource(f func(chat string) (Timer, bool)) { c.timerSource = f }
 
@@ -134,7 +134,7 @@ func ephemeralSetting(chat string, pm *waE2E.ProtocolMessage, at time.Time) Disa
 
 // learnFromMessage reads the timer off a live message: a setting change (Disappearing from
 // classify, including the owner's change on the phone) or the timer an ordinary message carries.
-// Deputy's own messages are skipped; they carry whatever Deputy put there.
+// Positron's own messages are skipped; they carry whatever Positron put there.
 func (c *Client) learnFromMessage(e *events.Message, in Incoming, upd any) {
 	if d, ok := upd.(Disappearing); ok {
 		seen := timerSeen{Seconds: d.Seconds, Authoritative: true}
@@ -144,7 +144,7 @@ func (c *Client) learnFromMessage(e *events.Message, in Incoming, upd any) {
 		c.learnTimer(d.Chat, seen)
 		return
 	}
-	if in.ID == "" || in.FromDeputy {
+	if in.ID == "" || in.FromPositron {
 		return
 	}
 	ci := contextInfoOf(e.Message)
@@ -257,7 +257,7 @@ func withTimer(m *waE2E.Message, t Timer) *waE2E.Message {
 }
 
 // sendMessage sends a new message to j with the chat's disappearing timer. Every new message
-// Deputy sends goes through here; reactions, edits and deletions do not need the timer.
+// Positron sends goes through here; reactions, edits and deletions do not need the timer.
 func (c *Client) sendMessage(ctx context.Context, cli *whatsmeow.Client, j types.JID, m *waE2E.Message) (whatsmeow.SendResponse, error) {
 	return cli.SendMessage(ctx, j, withTimer(m, c.timerFor(ctx, cli, j)))
 }

@@ -15,7 +15,7 @@ import (
 // AgentRun is one headless Claude Code run of an agent.
 type AgentRun struct {
 	Dir          string // the agent's repo
-	SystemPrompt string // Deputy's protocol, appended to Claude Code's prompt
+	SystemPrompt string // Positron's protocol, appended to Claude Code's prompt
 	Prompt       string // the chat and the new messages
 	Model        string // "" = the person's default
 	Web          bool

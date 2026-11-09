@@ -23,7 +23,7 @@ type Message struct {
 	SenderJID  string    `json:"senderJid"`
 	SenderName string    `json:"senderName"`
 	FromMe     bool      `json:"fromMe"`
-	FromAgent  bool      `json:"fromAgent"` // sent by Deputy on the person's behalf
+	FromAgent  bool      `json:"fromAgent"` // sent by Positron on the person's behalf
 	At         time.Time `json:"at"`
 	Kind       MsgKind   `json:"kind"`
 	Text       string    `json:"text"` // body, or the media caption
@@ -47,7 +47,7 @@ type Message struct {
 	Edited       bool       `json:"edited,omitempty"`
 	Revoked      bool       `json:"revoked,omitempty"` // deleted for everyone
 	History      bool       `json:"history,omitempty"` // came from a history sync, not live
-	FromUI       bool       `json:"fromUi,omitempty"`  // typed by the owner in Deputy's own inbox
+	FromUI       bool       `json:"fromUi,omitempty"`  // typed by the owner in Positron's own inbox
 	// ViewOnce is a view-once photo, video or voice note. Without MediaRef it is a placeholder:
 	// WhatsApp kept the media on the phone.
 	ViewOnce bool `json:"viewOnce,omitempty"`
@@ -106,7 +106,7 @@ func (m *Message) SetReaction(r Reaction) bool {
 	return true
 }
 
-// Chat is a WhatsApp chat or group Deputy has seen.
+// Chat is a WhatsApp chat or group Positron has seen.
 type Chat struct {
 	JID      string    `json:"jid"`
 	Name     string    `json:"name"`
@@ -128,7 +128,7 @@ type Chat struct {
 	Archived   bool      `json:"archived,omitempty"`
 
 	// Disappearing messages, as last learned from WhatsApp: the timer in seconds (0 = off), when
-	// it was set (zero when unknown), and whether Deputy knows it at all.
+	// it was set (zero when unknown), and whether Positron knows it at all.
 	Disappearing      int       `json:"disappearing,omitempty"`
 	DisappearingAt    time.Time `json:"disappearingAt,omitempty"`
 	DisappearingKnown bool      `json:"disappearingKnown,omitempty"`

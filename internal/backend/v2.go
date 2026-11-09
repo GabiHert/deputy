@@ -82,11 +82,11 @@ func messageDTO(m domain.Message) app.MessageDTO {
 	return d
 }
 
-// DefaultRepoPath suggests ~/Deputy/agents/<slug> for a new agent, avoiding folders in use.
-// With DEPUTY_HOME set (a separate Deputy, like a test one), agents go under that home instead.
+// DefaultRepoPath suggests ~/Positron/agents/<slug> for a new agent, avoiding folders in use.
+// With POSITRON_HOME set (a separate Positron, like a test one), agents go under that home instead.
 func DefaultRepoPath(name string) string {
-	root := filepath.Join(os.Getenv("HOME"), "Deputy", "agents")
-	if os.Getenv("DEPUTY_HOME") != "" {
+	root := filepath.Join(os.Getenv("HOME"), "Positron", "agents")
+	if os.Getenv("POSITRON_HOME") != "" {
 		root = filepath.Join(paths.Home(), "agents")
 	}
 	base := filepath.Join(root, slug(name))
@@ -124,7 +124,7 @@ func slug(s string) string {
 
 func (b *Backend) ready() error {
 	if b.v2 == nil {
-		return errors.New("Deputy is still starting")
+		return errors.New("Positron is still starting")
 	}
 	return nil
 }
@@ -457,7 +457,7 @@ func (b *Backend) CreateAgentFromCard(messageID string, p app.AgentProposalDTO) 
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
-		sha, _, _ := repo.Commit(ctx, ag.Name+": starting knowledge from the Deputy chat")
+		sha, _, _ := repo.Commit(ctx, ag.Name+": starting knowledge from the Positron chat")
 		created, _ = b.GetAgent(saved.ID)
 		p.CreatedAgentID = saved.ID
 		card.Agent = &p

@@ -1,5 +1,5 @@
-// Package mcpserver lets Claude Code in other projects drive Deputy: an MCP server on a fixed
-// localhost port, behind a bearer token kept in Deputy's home folder.
+// Package mcpserver lets Claude Code in other projects drive Positron: an MCP server on a fixed
+// localhost port, behind a bearer token kept in Positron's home folder.
 package mcpserver
 
 import (
@@ -21,7 +21,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-// DefaultPort is where the server listens; DEPUTY_MCP_PORT overrides it.
+// DefaultPort is where the server listens; POSITRON_MCP_PORT overrides it.
 const DefaultPort = "47615"
 
 // Backend is what the tools call: every action of the app, plus sending and asking an agent.
@@ -40,12 +40,12 @@ type Backend interface {
 // Options configure a Server.
 type Options struct {
 	Home            string                   // the token lives at Home/mcp-token
-	Port            string                   // "" = DEPUTY_MCP_PORT, else DefaultPort
+	Port            string                   // "" = POSITRON_MCP_PORT, else DefaultPort
 	DefaultRepoPath func(name string) string // where create_agent puts a new agent's repo
 	WaitTimeout     time.Duration            // how long tools wait for Claude or an agent, default 5 minutes
 }
 
-// Server is Deputy's MCP server for Claude Code in other projects. It is off until SetEnabled(true).
+// Server is Positron's MCP server for Claude Code in other projects. It is off until SetEnabled(true).
 type Server struct {
 	b    Backend
 	opts Options
@@ -59,7 +59,7 @@ type Server struct {
 // New returns a stopped server.
 func New(b Backend, opts Options) *Server {
 	if opts.Port == "" {
-		opts.Port = os.Getenv("DEPUTY_MCP_PORT")
+		opts.Port = os.Getenv("POSITRON_MCP_PORT")
 	}
 	if opts.Port == "" {
 		opts.Port = DefaultPort
@@ -153,7 +153,7 @@ func (s *Server) SetEnabled(on bool) error {
 	}
 	ln, err := net.Listen("tcp", "127.0.0.1:"+s.opts.Port)
 	if err != nil {
-		s.err = fmt.Sprintf("Port %s is in use, so the server could not start. Quit what uses it, or set DEPUTY_MCP_PORT.", s.opts.Port)
+		s.err = fmt.Sprintf("Port %s is in use, so the server could not start. Quit what uses it, or set POSITRON_MCP_PORT.", s.opts.Port)
 		return errors.New(s.err)
 	}
 	s.err = ""

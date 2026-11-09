@@ -18,7 +18,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// streamEvent is the part of a stream-json line Deputy reads.
+// streamEvent is the part of a stream-json line Positron reads.
 type streamEvent struct {
 	Type      string `json:"type"`
 	Subtype   string `json:"subtype"`
@@ -72,13 +72,13 @@ type runResult struct {
 }
 
 func (s *Service) claudeArgs(r runSpec) []string {
-	mcpCfg, _ := json.Marshal(map[string]any{"mcpServers": map[string]any{"deputy": map[string]any{
+	mcpCfg, _ := json.Marshal(map[string]any{"mcpServers": map[string]any{"positron": map[string]any{
 		"type": "http", "url": s.tools.url,
 		"headers": map[string]string{"Authorization": "Bearer " + s.tools.token, chatHeader: r.chatID},
 	}}})
 	allowed := make([]string, 0, len(r.tools))
 	for _, t := range r.tools {
-		allowed = append(allowed, "mcp__deputy__"+t)
+		allowed = append(allowed, "mcp__positron__"+t)
 	}
 	builtin := r.builtin
 	allowed = append(allowed, builtin...)
@@ -258,7 +258,7 @@ func (s *Service) run(ctx context.Context, chatID, prompt string) {
 // transcript is the chat so far, for a session that has to start over.
 func (s *Service) transcript(chatID string) string {
 	var b strings.Builder
-	b.WriteString("[Deputy: the earlier session was lost. The conversation so far:]\n")
+	b.WriteString("[Positron: the earlier session was lost. The conversation so far:]\n")
 	for _, m := range s.messages(chatID) {
 		switch m.Role {
 		case "user", "assistant", "note":

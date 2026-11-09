@@ -1,4 +1,4 @@
-// Package menubar puts Deputy's icon and menu in the macOS menu bar.
+// Package menubar puts Positron's icon and menu in the macOS menu bar.
 package menubar
 
 import "sync"
@@ -43,7 +43,7 @@ func (i *Item) SetWaiting(n int) { setWaiting(n) }
 // SetUnread shows how many WhatsApp messages are unread, in the menu and on the Dock icon.
 func (i *Item) SetUnread(n int) { setUnread(n) }
 
-// Focused reports whether one of Deputy's windows has the keyboard focus right now.
+// Focused reports whether one of Positron's windows has the keyboard focus right now.
 func Focused() bool { return focused() }
 
 func (i *Item) dispatch(action int) {

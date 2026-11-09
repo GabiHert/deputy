@@ -22,8 +22,8 @@ func TestInitAndCommitListsFiles(t *testing.T) {
 	}
 	_ = os.WriteFile(filepath.Join(dir, "knowledge", "people.md"), []byte("# People\n\nAna has a cat.\n"), 0o644)
 	_ = os.WriteFile(filepath.Join(dir, "knowledge", "cats.md"), []byte("Miso\n"), 0o644)
-	_ = os.MkdirAll(filepath.Join(dir, ".deputy", "media"), 0o755)
-	_ = os.WriteFile(filepath.Join(dir, ".deputy", "media", "x.jpg"), []byte("x"), 0o644)
+	_ = os.MkdirAll(filepath.Join(dir, ".positron", "media"), 0o755)
+	_ = os.WriteFile(filepath.Join(dir, ".positron", "media", "x.jpg"), []byte("x"), 0o644)
 	sha, files, err := r.Commit(ctx, "test")
 	if err != nil || sha == "" {
 		t.Fatalf("commit: %v %q", err, sha)

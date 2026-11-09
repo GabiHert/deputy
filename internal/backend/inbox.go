@@ -26,7 +26,7 @@ import (
 	"github.com/GabiHert/positron/internal/whatsapp"
 )
 
-// The inbox: Deputy as the owner's own WhatsApp client.
+// The inbox: Positron as the owner's own WhatsApp client.
 
 const (
 	historyTimeout = 45 * time.Second // how long LoadOlder waits for the phone
@@ -562,7 +562,7 @@ func (b *Backend) mediaFile(ctx context.Context, chat, id string) (domain.Messag
 		return m, "", errors.New("this message was deleted")
 	}
 	if len(m.MediaRef) == 0 {
-		return m, "", errors.New("This file arrived before Deputy kept files, so it can only be opened on your phone.")
+		return m, "", errors.New("This file arrived before Positron kept files, so it can only be opened on your phone.")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Minute)
 	defer cancel()
@@ -597,7 +597,7 @@ func (b *Backend) GetMedia(ctx context.Context, chat, id string) (string, error)
 	if u := b.mediaURL(p); u != "" {
 		return u, nil
 	}
-	return "", errors.New("the file is outside Deputy's media folder")
+	return "", errors.New("the file is outside Positron's media folder")
 }
 
 // OpenMedia downloads a message's file when needed and opens it in its macOS app.
@@ -618,7 +618,7 @@ func (b *Backend) sent(m domain.Message, err error) (app.ChatMessageDTO, error) 
 	return b.chatMessageDTO(m), nil
 }
 
-// send sends as the owner: typed in Deputy's window (an "answer my own messages" agent runs for
+// send sends as the owner: typed in Positron's window (an "answer my own messages" agent runs for
 // it), or on their behalf from Claude Code (never starts a run).
 func (b *Backend) send(ctx context.Context, chat string, out whatsapp.Outgoing, typed bool) (app.ChatMessageDTO, error) {
 	if typed {
@@ -627,7 +627,7 @@ func (b *Backend) send(ctx context.Context, chat string, out whatsapp.Outgoing, 
 	return b.sent(b.d.Engine.SendQuiet(ctx, chat, out))
 }
 
-// SendText sends a text message the owner typed in Deputy.
+// SendText sends a text message the owner typed in Positron.
 func (b *Backend) SendText(ctx context.Context, in app.SendTextDTO) (app.ChatMessageDTO, error) {
 	return b.send(ctx, in.Chat, whatsapp.Outgoing{Kind: "text", Text: in.Text, QuotedID: in.QuotedID, Mentions: in.Mentions}, true)
 }
@@ -668,7 +668,7 @@ func FileKind(mimeType string) string {
 	return "document"
 }
 
-// SendFile sends a photo, video, audio file or document the owner picked in Deputy.
+// SendFile sends a photo, video, audio file or document the owner picked in Positron.
 func (b *Backend) SendFile(ctx context.Context, in app.SendFileDTO) (app.ChatMessageDTO, error) {
 	return b.sendFile(ctx, in, true)
 }
@@ -684,7 +684,7 @@ func (b *Backend) sendFile(ctx context.Context, in app.SendFileDTO, typed bool) 
 			return app.ChatMessageDTO{}, errors.New("that file is not there")
 		}
 		if st.Size() > maxFileBytes {
-			return app.ChatMessageDTO{}, errors.New("the file is too big: Deputy sends files up to 100 MB")
+			return app.ChatMessageDTO{}, errors.New("the file is too big: Positron sends files up to 100 MB")
 		}
 		if data, err = os.ReadFile(p); err != nil {
 			return app.ChatMessageDTO{}, err
@@ -698,7 +698,7 @@ func (b *Backend) sendFile(ctx context.Context, in app.SendFileDTO, typed bool) 
 			return app.ChatMessageDTO{}, err
 		}
 		if len(data) > maxFileBytes {
-			return app.ChatMessageDTO{}, errors.New("the file is too big: Deputy sends files up to 100 MB")
+			return app.ChatMessageDTO{}, errors.New("the file is too big: Positron sends files up to 100 MB")
 		}
 	default:
 		return app.ChatMessageDTO{}, errors.New("choose a file to send")

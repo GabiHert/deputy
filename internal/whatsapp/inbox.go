@@ -295,7 +295,7 @@ func (c *Client) history(d *waHistorySync.HistorySync) (History, bool) {
 
 // ---- sending ----
 
-// Outgoing is a message the owner sends from Deputy.
+// Outgoing is a message the owner sends from Positron.
 type Outgoing struct {
 	Kind     string // "text" | "image" | "video" | "document" | "audio" | "voice"
 	Text     string // the body, or the media caption
@@ -614,7 +614,7 @@ func (c *Client) LookupPhone(ctx context.Context, digits string) (string, error)
 	}
 	for _, r := range res {
 		if r.IsIn {
-			// Prefer the phone-number JID: it is how Deputy (and the MCP server) name direct chats.
+			// Prefer the phone-number JID: it is how Positron (and the MCP server) name direct chats.
 			if !r.PhoneNumber.IsEmpty() && r.PhoneNumber.Server == types.DefaultUserServer {
 				return r.PhoneNumber.ToNonAD().String(), nil
 			}
@@ -651,7 +651,7 @@ func (c *Client) ProfilePicture(ctx context.Context, jid, existingID string) (ur
 	return info.URL, info.ID, nil
 }
 
-// SetOnline shows the owner online (needed to see others typing) or offline. While Deputy shows
+// SetOnline shows the owner online (needed to see others typing) or offline. While Positron shows
 // the owner online, WhatsApp may hold back notifications on the phone, like WhatsApp Web does.
 func (c *Client) SetOnline(on bool) {
 	cli, err := c.client()

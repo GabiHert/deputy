@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-// TestMain lets a copy of the test binary stand in for Deputy: with DEPUTY_TEST_SLEEP set it only sleeps.
+// TestMain lets a copy of the test binary stand in for Positron: with POSITRON_TEST_SLEEP set it only sleeps.
 func TestMain(m *testing.M) {
-	if os.Getenv("DEPUTY_TEST_SLEEP") != "" {
+	if os.Getenv("POSITRON_TEST_SLEEP") != "" {
 		time.Sleep(5 * time.Second)
 		os.Exit(0)
 	}
@@ -21,13 +21,13 @@ func TestMain(m *testing.M) {
 // fakeApp makes an app bundle whose executable is a copy of the test binary, so ps shows its path.
 func fakeApp(t *testing.T, dir, marker string) string {
 	t.Helper()
-	app := filepath.Join(dir, "Deputy.app")
+	app := filepath.Join(dir, "Positron.app")
 	mac := filepath.Join(app, "Contents", "MacOS")
 	if err := os.MkdirAll(mac, 0o755); err != nil {
 		t.Fatal(err)
 	}
 	self, _ := os.Executable()
-	if out, err := exec.Command("/bin/cp", self, filepath.Join(mac, "Deputy")).CombinedOutput(); err != nil {
+	if out, err := exec.Command("/bin/cp", self, filepath.Join(mac, "Positron")).CombinedOutput(); err != nil {
 		t.Fatalf("cp: %v %s", err, out)
 	}
 	_ = os.WriteFile(filepath.Join(app, "marker"), []byte(marker), 0o644)
@@ -40,7 +40,7 @@ func runInstall(t *testing.T, newApp, dest, open string) string {
 	gone := exec.Command("/usr/bin/true")
 	_ = gone.Run()
 	err := startInstaller(gone.Process.Pid, newApp, dest, logPath, []string{
-		"DEPUTY_OPEN=" + open, "DEPUTY_QUIT_WAIT=5", "DEPUTY_LAUNCH_WAIT=3", "DEPUTY_LAUNCH_SETTLE=1"})
+		"POSITRON_OPEN=" + open, "POSITRON_QUIT_WAIT=5", "POSITRON_LAUNCH_WAIT=3", "POSITRON_LAUNCH_SETTLE=1"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestInstallSwapsAndRemovesStagedApp(t *testing.T) {
 	dest := fakeApp(t, t.TempDir(), "old")
 	newApp := fakeApp(t, t.TempDir(), "new")
 	// The fake open starts the installed executable, as Launch Services would.
-	open := writeOpen(t, `DEPUTY_TEST_SLEEP=1 "$1/Contents/MacOS/Deputy" >/dev/null 2>&1 &`)
+	open := writeOpen(t, `POSITRON_TEST_SLEEP=1 "$1/Contents/MacOS/Positron" >/dev/null 2>&1 &`)
 	log := runInstall(t, newApp, dest, open)
 	if !strings.Contains(log, "install: done") {
 		t.Fatalf("log:\n%s", log)

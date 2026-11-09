@@ -1,30 +1,30 @@
-# Handoff: install Deputy on the work Mac
+# Handoff: install Positron on the work Mac
 
 ## Who you are helping
 
 The person builds their own dev tools on a personal Mac. This session runs on their managed work
-Mac. Your job is to install **Deputy** here from a pre-built GitHub Release, check that it can
-run, and report back. From then on Deputy updates itself.
+Mac. Your job is to install **Positron** here from a pre-built GitHub Release, check that it can
+run, and report back. From then on Positron updates itself.
 
-Deputy is a macOS app (Go + Wails) that runs Claude Code agents on the person's WhatsApp chats.
-Repo: `GabiHert/deputy` (private). Its personal-Mac session wrote this handoff on 2026-11-06.
+Positron is a macOS app (Go + Wails) that runs Claude Code agents on the person's WhatsApp chats.
+Repo: `GabiHert/positron` (private). Its personal-Mac session wrote this handoff on 2026-11-06.
 
 **Prerequisite:** a published release at `https://github.com/GabiHert/positron/releases/latest`.
 When this was written, none had been published yet. If there is still none, stop after step 0 and
 say so.
 
-## How Deputy updates (already built)
+## How Positron updates (already built)
 
-- `make release` on the personal Mac builds Deputy, tags it and attaches two files to a GitHub
+- `make release` on the personal Mac builds Positron, tags it and attaches two files to a GitHub
   Release:
-  - `Deputy-vX.Y.Z-darwin-arm64.zip`
+  - `Positron-vX.Y.Z-darwin-arm64.zip`
   - `SHA256SUMS`
-- The app calls `https://api.github.com/repos/GabiHert/deputy/releases/latest`. It downloads the
+- The app calls `https://api.github.com/repos/GabiHert/positron/releases/latest`. It downloads the
   zip through the API asset URL and checks it against `SHA256SUMS` and its code signature. Then it
   swaps the app bundle and rolls back if the new one does not start.
 - Go's HTTP client trusts the macOS system keychain, so the security agent's CA should be accepted.
 - A GitHub token for the private repo lives in the macOS login keychain, under the service
-  "Deputy updates". The person adds it in Deputy → Settings → Updates.
+  "Positron updates". The person adds it in Positron → Settings → Updates.
 - **Signing:** releases are signed ad hoc and not notarized until the person signs `make release`
   with an Apple Developer ID. Once a Developer ID build is installed, the updater refuses updates signed
   differently.
@@ -56,15 +56,15 @@ sw_vers; uname -m                                    # want arm64
 spctl --status                                       # Gatekeeper state (read only)
 profiles status -type enrollment 2>/dev/null         # MDM enrollment (read only)
 curl -sS -o /dev/null -w '%{http_code}\n' https://api.github.com                         # want 200
-curl -sS -o /dev/null -w '%{http_code}\n' https://api.github.com/repos/GabiHert/deputy/releases/latest
+curl -sS -o /dev/null -w '%{http_code}\n' https://api.github.com/repos/GabiHert/positron/releases/latest
 #   404 without a token is expected for a private repo
 curl -sS -o /dev/null -w '%{http_code}\n' https://web.whatsapp.com                       # WhatsApp link
-command -v claude && claude --version                # Deputy runs the claude CLI
+command -v claude && claude --version                # Positron runs the claude CLI
 command -v git; command -v ffmpeg; command -v gh     # optional, see below
 ls -ld /Applications ~/Applications 2>/dev/null; test -w /Applications && echo apps-writable
 ```
 
-What the tools do in Deputy:
+What the tools do in Positron:
 
 - `claude`: required. Agents run `claude -p`. It must be installed and logged in, the way the
   company allows. If it isn't, stop and report.
@@ -79,10 +79,10 @@ What the tools do in Deputy:
 The person creates a fine-grained token in a browser:
 
 - Settings → Developer settings → Fine-grained tokens.
-- Resource owner: GabiHert. Repository: only `GabiHert/deputy`.
+- Resource owner: GabiHert. Repository: only `GabiHert/positron`.
 - Permissions: Contents **read-only**, and nothing else.
 
-Do not ask them to paste the token into this chat. They paste it into Deputy in step 4. If you
+Do not ask them to paste the token into this chat. They paste it into Positron in step 4. If you
 need it for a check in step 2, read it into a shell variable without echoing it, and unset it
 afterwards.
 
@@ -93,7 +93,7 @@ the app normally.
 
 - If the browser is signed in to GitHub with access to the repo, open
   `https://github.com/GabiHert/positron/releases/latest` and download
-  `Deputy-<tag>-darwin-arm64.zip` and `SHA256SUMS`.
+  `Positron-<tag>-darwin-arm64.zip` and `SHA256SUMS`.
 - If not, ask the person how they want to get it. Don't pick a route that skips quarantine.
   If they choose the API with their token, mark the zip as downloaded afterwards, so Gatekeeper
   still assesses it:
@@ -101,14 +101,14 @@ the app normally.
   ```sh
   # list the assets (read the token without echoing it)
   read -rs GH_TOKEN; export GH_TOKEN
-  curl -sS -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/GabiHert/deputy/releases/latest \
+  curl -sS -H "Authorization: Bearer $GH_TOKEN" https://api.github.com/repos/GabiHert/positron/releases/latest \
     | python3 -c 'import json,sys; [print(a["id"], a["name"]) for a in json.load(sys.stdin)["assets"]]'
   # download one asset by id (-L follows the redirect; curl drops the token on the new host)
   curl -sSL -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/octet-stream" \
-    -o ~/Downloads/<name> https://api.github.com/repos/GabiHert/deputy/releases/assets/<id>
+    -o ~/Downloads/<name> https://api.github.com/repos/GabiHert/positron/releases/assets/<id>
   unset GH_TOKEN
   # keep Gatekeeper in the loop, as a browser download would
-  xattr -w com.apple.quarantine "0081;$(printf %x "$(date +%s)");curl;" ~/Downloads/Deputy-*.zip
+  xattr -w com.apple.quarantine "0081;$(printf %x "$(date +%s)");curl;" ~/Downloads/Positron-*.zip
   ```
 
 Verify the checksum before unzipping:
@@ -119,15 +119,15 @@ cd ~/Downloads && shasum -a 256 -c SHA256SUMS --ignore-missing
 
 ## Step 3: install and open
 
-Unzip the download (double-click it in Finder), then have the person **drag `Deputy.app` into
+Unzip the download (double-click it in Finder), then have the person **drag `Positron.app` into
 Applications in Finder**, or into `~/Applications` if `/Applications` is not writable. Moving it in
 Finder matters: macOS runs a quarantined app that was not moved from a temporary read-only copy
-("App Translocation"), and from there Deputy cannot update itself.
+("App Translocation"), and from there Positron cannot update itself.
 
 ```sh
-codesign -dvv /Applications/Deputy.app 2>&1 | grep -E 'Identifier|TeamIdentifier|Signature'
-spctl --assess --type execute -vv /Applications/Deputy.app   # read only: what Gatekeeper thinks
-open /Applications/Deputy.app
+codesign -dvv /Applications/Positron.app 2>&1 | grep -E 'Identifier|TeamIdentifier|Signature'
+spctl --assess --type execute -vv /Applications/Positron.app   # read only: what Gatekeeper thinks
+open /Applications/Positron.app
 ```
 
 - If it opens, go to step 4.
@@ -135,15 +135,21 @@ open /Applications/Deputy.app
   Privacy & Security shows **Open Anyway**; using it is their call. If there is no such option, stop.
   The fix is on the personal-Mac side: a Developer ID-signed, notarized release, or approval from IT.
 
+**If Deputy is installed here** (Positron's old name): Deputy cannot update itself into Positron,
+because the app name, bundle identifier and release files changed. Install Positron as above, but
+first quit Deputy (menu bar icon → Quit). When Positron opens it moves Deputy's data folder,
+WhatsApp link and saved GitHub token over, so skip the WhatsApp and token parts of step 4. Then
+the person drags `Deputy.app` to the Trash.
+
 ## Step 4: first run
 
-1. Link WhatsApp: Deputy shows a QR code (or a phone-number code), and the person scans it on the
+1. Link WhatsApp: Positron shows a QR code (or a phone-number code), and the person scans it on the
    phone.
-2. **Agents:** this Deputy starts with no agents. If the personal Mac's Deputy is also linked and
+2. **Agents:** this Positron starts with no agents. If the personal Mac's Positron is also linked and
    running agents, do not recreate the same agents here, or both Macs will answer the same chats.
 3. Settings → Updates → **Add token**: the person pastes the token, then clicks **Save in
    keychain**.
-4. Click **Check for updates**. Expect "Deputy is up to date", or a newer version.
+4. Click **Check for updates**. Expect "Positron is up to date", or a newer version.
 
 ## Step 5: report back
 

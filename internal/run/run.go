@@ -1,9 +1,11 @@
-// Package run wires Deputy together and opens the window.
+// Package run wires Positron together and opens the window.
 package run
 
 import (
 	"context"
 	"embed"
+	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -21,6 +23,7 @@ import (
 	"github.com/GabiHert/positron/internal/media"
 	"github.com/GabiHert/positron/internal/mediacapture"
 	"github.com/GabiHert/positron/internal/menubar"
+	"github.com/GabiHert/positron/internal/migrate"
 	"github.com/GabiHert/positron/internal/paths"
 	"github.com/GabiHert/positron/internal/speech"
 	"github.com/GabiHert/positron/internal/store"
@@ -50,15 +53,38 @@ func cachedEnv() func() []string {
 
 // Run starts the app.
 func Run(assets embed.FS) error {
+	// Positron was called Deputy: bring Deputy's data over once, before anything opens it.
+	var moved migrate.Result
+	if p, ok := migrate.Default(); ok {
+		var err error
+		if moved, err = p.Run(context.Background()); err != nil {
+			if !errors.Is(err, migrate.ErrOldRunning) {
+				err = fmt.Errorf("Positron could not bring over Deputy's data, so it did not start: %w", err)
+			}
+			system.Alert(err.Error())
+			return err
+		}
+	}
 	if err := os.MkdirAll(paths.Home(), 0o700); err != nil {
 		return err
 	}
 	if f, err := os.OpenFile(paths.LogPath(), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o600); err == nil {
 		log.SetOutput(io.MultiWriter(os.Stderr, f))
 	}
+	if moved.Moved {
+		log.Printf("migrate: moved Deputy's data folder to %s", paths.Home())
+	}
+	if moved.MovedToken {
+		log.Printf("migrate: moved Deputy's GitHub token in the keychain to %q", update.KeychainService)
+	}
 	st, err := store.Open(paths.DBPath())
 	if err != nil {
 		return err
+	}
+	if moved.LoginItem || (moved.Moved && st.Settings().OpenAtLogin) {
+		if err := (system.LoginItem{}).Set(true); err != nil {
+			log.Printf("migrate: open at login: %v", err)
+		}
 	}
 	st.FailRunning()
 	wa, err := whatsapp.Open(context.Background(), paths.WhatsAppDBPath())
@@ -96,7 +122,7 @@ func Run(assets embed.FS) error {
 	item := menubar.New()
 
 	var notify func(title, body string)
-	upd := update.New(update.Deps{Version: Version, AppName: "Deputy", Repo: "GabiHert/deputy", Env: gitEnv,
+	upd := update.New(update.Deps{Version: Version, AppName: "Positron", Repo: update.DefaultRepo, Env: gitEnv,
 		Emit: emit, Dir: paths.UpdateDir(), LogPath: paths.UpdateLogPath(),
 		Notify: func(title, body string) { notify(title, body) }, Quit: func() {
 			if c := getCtx(); c != nil {
@@ -231,7 +257,7 @@ func Run(assets embed.FS) error {
 
 	mediacapture.Allow()
 	return wailsv2.Run(&options.App{
-		Title:             "Deputy",
+		Title:             "Positron",
 		Width:             1280,
 		Height:            820,
 		MinWidth:          960,
@@ -296,11 +322,11 @@ func Run(assets embed.FS) error {
 	})
 }
 
-// instanceID is the single-instance lock. A separate DEPUTY_HOME is a separate Deputy, so it
+// instanceID is the single-instance lock. A separate POSITRON_HOME is a separate Positron, so it
 // gets its own lock and can run next to the installed app.
 func instanceID() string {
-	if h := os.Getenv("DEPUTY_HOME"); h != "" {
-		return "tech.bhlabs.deputy." + uuid.NewSHA1(uuid.NameSpaceURL, []byte(h)).String()[:8]
+	if h := os.Getenv("POSITRON_HOME"); h != "" {
+		return "tech.bhlabs.positron." + uuid.NewSHA1(uuid.NameSpaceURL, []byte(h)).String()[:8]
 	}
-	return "tech.bhlabs.deputy"
+	return "tech.bhlabs.positron"
 }

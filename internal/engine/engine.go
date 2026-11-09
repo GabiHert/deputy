@@ -30,7 +30,7 @@ type WhatsApp interface {
 	ChatName(jid string) string
 	State() whatsapp.State
 
-	// The owner's own actions from Deputy's inbox.
+	// The owner's own actions from Positron's inbox.
 	Send(ctx context.Context, chat string, out whatsapp.Outgoing) (whatsapp.Sent, error)
 	React(ctx context.Context, chat, sender, id, emoji string) error
 	Revoke(ctx context.Context, chat, id string) error
@@ -124,9 +124,9 @@ func (e *Engine) HandleIncoming(in whatsapp.Incoming) {
 	}
 	if old, err := e.d.Store.Message(m.ChatJID, m.ID); err == nil {
 		if old.FromAgent || (old.FromMe && in.FromMe) {
-			return // something Deputy sent, echoed back
+			return // something Positron sent, echoed back
 		}
-		// The same message again: the phone resending a view-once Deputy only had a placeholder
+		// The same message again: the phone resending a view-once Positron only had a placeholder
 		// for, or a redelivery. Fill in the placeholder; never count or route it twice.
 		if old.ViewOnce && len(old.MediaRef) == 0 && len(m.MediaRef) > 0 {
 			e.updateMessage(m.ChatJID, m.ID, true, func(s *domain.Message) bool {
@@ -316,8 +316,8 @@ func (e *Engine) triggers(a domain.Agent, in whatsapp.Incoming) bool {
 		return false
 	}
 	if in.FromMe {
-		// Only what the person types on their phone; never what Deputy itself sent.
-		return a.AnswerMe && !in.FromDeputy
+		// Only what the person types on their phone; never what Positron itself sent.
+		return a.AnswerMe && !in.FromPositron
 	}
 	if a.Trigger == domain.TriggerAll || !in.IsGroup {
 		return true
@@ -468,7 +468,7 @@ func (e *Engine) Request(ctx context.Context, agentID, chatJID, request string, 
 		chatJID = a.Chats[0]
 	}
 	if e.ctx.Err() != nil {
-		return domain.Run{}, errors.New("Deputy is quitting")
+		return domain.Run{}, errors.New("Positron is quitting")
 	}
 	r := domain.Run{ID: uuid.NewString(), At: time.Now(), AgentID: a.ID, ChatJID: chatJID, Status: domain.RunRunning,
 		Request: request, Review: review}
@@ -523,7 +523,7 @@ func (e *Engine) execute(a domain.Agent, r domain.Run) domain.Run {
 	select {
 	case e.sem <- struct{}{}:
 	case <-e.ctx.Done():
-		r.Status, r.Error = domain.RunFailed, "Deputy quit while this run was going."
+		r.Status, r.Error = domain.RunFailed, "Positron quit while this run was going."
 		e.save(r)
 		return r
 	}
@@ -556,7 +556,7 @@ func (e *Engine) execute(a domain.Agent, r domain.Run) domain.Run {
 	}
 	if err != nil {
 		if e.ctx.Err() != nil {
-			r.Status, r.Error = domain.RunFailed, "Deputy quit while this run was going."
+			r.Status, r.Error = domain.RunFailed, "Positron quit while this run was going."
 		} else {
 			r.Status, r.Error = domain.RunFailed, err.Error()
 		}
@@ -619,10 +619,10 @@ func (e *Engine) overLimit(a domain.Agent) bool {
 	return len(sent) >= a.MaxPerHour
 }
 
-// stageMedia copies the history's photos into the repo's .deputy/media so the agent can read them.
+// stageMedia copies the history's photos into the repo's .positron/media so the agent can read them.
 // It returns message ID -> repo-relative path.
 func stageMedia(repoDir string, history []domain.Message) map[string]string {
-	dir := filepath.Join(repoDir, ".deputy", "media")
+	dir := filepath.Join(repoDir, ".positron", "media")
 	_ = os.RemoveAll(dir)
 	out := map[string]string{}
 	for _, m := range history {
@@ -638,7 +638,7 @@ func stageMedia(repoDir string, history []domain.Message) map[string]string {
 		}
 		name := filepath.Base(m.MediaPath)
 		if err := os.WriteFile(filepath.Join(dir, name), b, 0o644); err == nil {
-			out[m.ID] = ".deputy/media/" + name
+			out[m.ID] = ".positron/media/" + name
 		}
 	}
 	return out
@@ -796,7 +796,7 @@ func (e *Engine) SendNow(agentID, chatJID, text string) error {
 	if err != nil {
 		return errors.New("that agent no longer exists")
 	}
-	r := domain.Run{ID: uuid.NewString(), At: time.Now(), AgentID: a.ID, ChatJID: chatJID, Reply: text, Note: "Sent from a Deputy chat with Claude."}
+	r := domain.Run{ID: uuid.NewString(), At: time.Now(), AgentID: a.ID, ChatJID: chatJID, Reply: text, Note: "Sent from a Positron chat with Claude."}
 	if err := e.deliver(a, &r); err != nil {
 		return fmt.Errorf("the message could not be sent: %w", err)
 	}

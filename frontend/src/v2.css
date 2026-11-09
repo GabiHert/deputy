@@ -1,4 +1,4 @@
-/* Deputy v2: board, Claude chats, new agent by chatting. */
+/* Positron v2: board, Claude chats, new agent by chatting. */
 :root {
   --heat0: color-mix(in srgb, var(--accent) 6%, var(--card));
   --heat1: color-mix(in srgb, var(--accent) 20%, var(--card));

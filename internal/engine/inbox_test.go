@@ -31,7 +31,7 @@ func TestHistoryNeverStartsRuns(t *testing.T) {
 	e, wa, rn := answerMe(t, domain.ModeAuto)
 	rn.res = claude.AgentResult{Reply: "should never be sent"}
 	old := time.Now().Add(-48 * time.Hour)
-	other := msg("group1@g.us", "H1", "old question @deputy", true, true)
+	other := msg("group1@g.us", "H1", "old question @positron", true, true)
 	other.At = old
 	own := msg("group1@g.us", "H2", "my old message", true, false)
 	own.FromMe, own.At = true, old.Add(time.Minute)
@@ -66,7 +66,7 @@ func TestHistoryNeverStartsRuns(t *testing.T) {
 func TestUITypedMessageStartsAnswerMeAgentOnce(t *testing.T) {
 	e, wa, rn := answerMe(t, domain.ModeAuto)
 	rn.res = claude.AgentResult{Reply: "Hoje: dentista às 15h", Note: "answered"}
-	m, err := e.SendOwner(context.Background(), "group1@g.us", whatsapp.Outgoing{Text: "deputy, what's on today?"})
+	m, err := e.SendOwner(context.Background(), "group1@g.us", whatsapp.Outgoing{Text: "positron, what's on today?"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +191,7 @@ func TestReactionsEditsAndDeletions(t *testing.T) {
 	if r := get("M1").Reactions; len(r) != 1 || !r[0].FromMe {
 		t.Fatalf("after removing Ana's: %+v", r)
 	}
-	// The owner's reaction from Deputy goes to WhatsApp with the sender of the message.
+	// The owner's reaction from Positron goes to WhatsApp with the sender of the message.
 	if _, err := e.React(context.Background(), loneChat, "M2", "🙏"); err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +214,7 @@ func TestReactionsEditsAndDeletions(t *testing.T) {
 	if after.Unread != before.Unread-1 || after.LastBody != "This message was deleted" {
 		t.Fatalf("chat after revoke: unread %d -> %d, %q", before.Unread, after.Unread, after.LastBody)
 	}
-	// Changes to messages Deputy never saw are ignored.
+	// Changes to messages Positron never saw are ignored.
 	e.HandleUpdate(whatsapp.Edit{Chat: loneChat, TargetID: "NOPE", Text: "x"})
 	if updates != 7 {
 		t.Fatalf("updates reported: %d", updates)
@@ -289,11 +289,11 @@ func TestViewOnceInPrompt(t *testing.T) {
 		{domain.Message{Kind: domain.KindImage, ViewOnce: true}, "[view-once photo, not available]"},
 		{domain.Message{Kind: domain.KindVoice, ViewOnce: true, Seconds: 4}, "[view-once voice note, not available]"},
 		{domain.Message{Kind: domain.KindVideo, ViewOnce: true, Text: "olha"}, "[view-once video, not available] olha"},
-		{domain.Message{ID: "P", Kind: domain.KindImage, ViewOnce: true, MediaRef: []byte{1}}, "[view-once photo: .deputy/media/p.jpg]"},
+		{domain.Message{ID: "P", Kind: domain.KindImage, ViewOnce: true, MediaRef: []byte{1}}, "[view-once photo: .positron/media/p.jpg]"},
 		{domain.Message{Kind: domain.KindImage}, "[photo, not available]"},
 	}
 	for _, c := range cases {
-		if got := body(c.m, map[string]string{"P": ".deputy/media/p.jpg"}); got != c.want {
+		if got := body(c.m, map[string]string{"P": ".positron/media/p.jpg"}); got != c.want {
 			t.Errorf("body(%+v) = %q, want %q", c.m, got, c.want)
 		}
 	}

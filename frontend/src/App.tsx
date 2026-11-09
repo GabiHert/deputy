@@ -134,7 +134,7 @@ function Sidebar({
         <span className="brand__mark">
           <Logo size={26} />
         </span>
-        <span className="brand__name">Deputy</span>
+        <span className="brand__name">Positron</span>
       </div>
       {navItem(
         "activity",
