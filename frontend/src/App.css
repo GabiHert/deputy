@@ -1,7 +1,4 @@
-/* Positron: Notted's tokens, three views beside a sidebar. */
-:root {
-  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
-}
+/* Positron: Notted's tokens, three views beside a sidebar. Fonts live in styles/tokens.css. */
 
 /* ---------- shell ---------- */
 .shell {
@@ -36,9 +33,8 @@
   display: flex;
 }
 .brand__name {
-  font-family: var(--font-display);
-  font-size: 23px;
-  font-weight: 500;
+  font: 600 17px var(--brand);
+  letter-spacing: -0.01em;
 }
 .nav {
   display: flex;
@@ -166,8 +162,9 @@
 .page h1 {
   margin: 0;
   font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 30px;
+  font-weight: 600;
+  font-size: 26px;
+  letter-spacing: -0.015em;
   line-height: 1.15;
   text-wrap: balance;
 }
@@ -429,7 +426,7 @@
   min-width: 0;
 }
 .input--prose {
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.55;
   resize: vertical;
@@ -662,6 +659,7 @@
 }
 .stat__num {
   font-family: var(--font-display);
+  font-weight: 600;
   font-size: 20px;
   font-variant-numeric: tabular-nums;
 }
@@ -1032,7 +1030,7 @@
 }
 .prose {
   margin: 0;
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.55;
   white-space: pre-wrap;
@@ -1134,7 +1132,7 @@
 }
 .tile__num {
   font-family: var(--font-display);
-  font-weight: 500;
+  font-weight: 600;
   font-size: 24px;
   font-variant-numeric: tabular-nums;
 }

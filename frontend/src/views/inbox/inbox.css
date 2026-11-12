@@ -110,8 +110,9 @@
 .ib-h1 {
   margin: 0;
   font-family: var(--font-display);
-  font-weight: 500;
-  font-size: 23px;
+  font-weight: 600;
+  font-size: 21px;
+  letter-spacing: -0.015em;
   line-height: 1.15;
 }
 .ib-list__top .ib-search { flex: none; padding: 0 10px; }
@@ -687,7 +688,7 @@
 
 /* nothing open */
 .ib-none { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 24px; }
-.ib-none__title { margin: 0; font-family: var(--font-display); font-size: 22px; }
+.ib-none__title { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 19px; letter-spacing: -0.01em; }
 .ib-none p { margin: 0; }
 
 /* new chat */
@@ -713,7 +714,7 @@
   padding: 14px;
 }
 .ib-dialog__head { display: flex; align-items: center; justify-content: space-between; }
-.ib-dialog__title { margin: 0; font-family: var(--font-display); font-weight: 500; font-size: 21px; }
+.ib-dialog__title { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 18px; letter-spacing: -0.01em; }
 .ib-dialog__list { overflow-y: auto; min-height: 0; margin: 0 -6px; }
 .ib-contact {
   width: 100%;

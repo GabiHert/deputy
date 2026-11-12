@@ -57,7 +57,7 @@ export function buildSrcdoc(opts: { html: string; js?: string; data: unknown; th
     "<!doctype html><html><head>",
     `<meta http-equiv="Content-Security-Policy" content="${FRAME_CSP}">`,
     '<meta charset="utf-8">',
-    `<style>:root{${theme}}html,body{margin:0;background:transparent;color:var(--fg);font:13px/1.45 -apple-system,"IBM Plex Sans",sans-serif}</style>`,
+    `<style>:root{${theme}}html,body{margin:0;background:transparent;color:var(--fg);font:13px/1.45 "Inter Tight",-apple-system,sans-serif}</style>`,
     `<script>window.data=${jsonForScript(opts.data)};${BRIDGE}</script>`,
     "</head><body>",
     opts.html ?? "",

@@ -16,9 +16,18 @@
   --rec-bg: #f6e3e1;
   --wave: #9aa6c8;
   --speaker: #24408e;
-  --font-sans: "IBM Plex Sans", sans-serif;
-  --font-display: "Newsreader", Georgia, serif;
-  --font-notes: "Newsreader", Georgia, serif;
+  /* Typography, shared with Hadron: Inter Tight for the UI and headings, Unbounded for the Positron
+     wordmark only, IBM Plex Mono for code. The faces are bundled (styles/fonts.css). */
+  --sans: "Inter Tight", -apple-system, "Segoe UI", sans-serif;
+  --head: "Inter Tight", -apple-system, "Segoe UI", sans-serif;
+  --brand: "Unbounded", "Inter Tight", -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  /* Older token names, kept as aliases. --font-display and --font-notes were the serif. */
+  --font-sans: var(--sans);
+  --font-display: var(--head);
+  --font-notes: var(--sans);
+  --font-mono: var(--mono);
+  --font-brand: var(--brand);
   --notes-size: 14.5px;
   --h3: 19px;
   --radius: 10px;
