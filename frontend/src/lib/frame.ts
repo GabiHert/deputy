@@ -1,9 +1,42 @@
 /** The CSP every custom block frame gets: no network, inline code only. */
 export const FRAME_CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:";
 
-const THEME_VARS = ["--bg", "--card", "--fg", "--fg2", "--fg3", "--border", "--accent", "--on-accent", "--ok", "--warn", "--bad", "--sel", "--wave"];
+const THEME_VARS = [
+  "--bg", "--bar", "--side", "--card", "--fg", "--fg2", "--fg3", "--fg3-text", "--border", "--row-line",
+  "--accent", "--on-accent", "--ok", "--ok-bg", "--warn", "--warn-bg", "--bad", "--bad-bg", "--sel",
+  "--muted-bg", "--wave", "--rec", "--rec-bg",
+];
 
-/** themeVars reads the app's color tokens so a frame matches light and dark mode. */
+/** themeScheme says whether the app shows its light or dark theme: the data-theme setting wins,
+ * then the system appearance. */
+export function themeScheme(): "light" | "dark" {
+  if (typeof document === "undefined") return "light";
+  const set = document.documentElement.getAttribute("data-theme");
+  if (set === "light" || set === "dark") return set;
+  return typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+/** watchTheme calls onChange when the app's theme can have changed: the system appearance flips,
+ * or the data-theme setting changes. It returns the function that stops watching. */
+export function watchTheme(onChange: () => void): () => void {
+  if (typeof document === "undefined") return () => {};
+  const mo = new MutationObserver(onChange);
+  mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "class", "style"] });
+  const mq = typeof matchMedia === "function" ? matchMedia("(prefers-color-scheme: dark)") : null;
+  mq?.addEventListener?.("change", onChange);
+  return () => {
+    mo.disconnect();
+    mq?.removeEventListener?.("change", onChange);
+  };
+}
+
+/** themeMessage is what the board posts to a frame so it follows the app's current theme. */
+export function themeMessage(): { positron: "theme"; vars: Record<string, string>; scheme: "light" | "dark" } {
+  return { positron: "theme", vars: themeVars(), scheme: themeScheme() };
+}
+
+/** themeVars reads the app's color tokens so a frame matches light and dark mode. They are read
+ * when the frame is built and again whenever the theme changes (see watchTheme). */
 export function themeVars(): Record<string, string> {
   const out: Record<string, string> = {};
   if (typeof document === "undefined") return out;
@@ -42,12 +75,19 @@ window.deputy=window.positron;
 window.addEventListener("message",function(e){
 if(e.source!==parent)return;var m=e.data||{};
 if(m.positron==="result"&&pending[m.id]){var p=pending[m.id];delete pending[m.id];if(m.error)p.rej(new Error(m.error));else p.res(m.result);}
+if(m.positron==="theme"){var r=document.documentElement,v=m.vars||{};for(var k in v){if(/^--[a-z0-9-]+$/.test(k))r.style.setProperty(k,String(v[k]).replace(/[<>{};]/g,""));}if(m.scheme==="dark"||m.scheme==="light")r.style.colorScheme=m.scheme;}
 if(m.positron==="update"){window.data=m.data;subs.forEach(function(f){try{f(m.data);}catch(_){}});}
 });
 })();`;
 
 /** buildSrcdoc makes the sandboxed document for a custom block. */
-export function buildSrcdoc(opts: { html: string; js?: string; data: unknown; theme?: Record<string, string> }): string {
+export function buildSrcdoc(opts: {
+  html: string;
+  js?: string;
+  data: unknown;
+  theme?: Record<string, string>;
+  scheme?: "light" | "dark";
+}): string {
   const theme = Object.entries(opts.theme ?? {})
     .filter(([k]) => /^--[a-z0-9-]+$/.test(k))
     .map(([k, v]) => `${k}:${cssValue(v)};`)
@@ -57,7 +97,8 @@ export function buildSrcdoc(opts: { html: string; js?: string; data: unknown; th
     "<!doctype html><html><head>",
     `<meta http-equiv="Content-Security-Policy" content="${FRAME_CSP}">`,
     '<meta charset="utf-8">',
-    `<style>:root{${theme}}html,body{margin:0;background:transparent;color:var(--fg);font:13px/1.45 -apple-system,"IBM Plex Sans",sans-serif}</style>`,
+    // color-scheme and the CanvasText fallback keep text readable even if a variable is missing.
+    `<style>:root{color-scheme:${opts.scheme === "dark" ? "dark" : opts.scheme === "light" ? "light" : "light dark"};${theme}}html,body{margin:0;background:transparent;color:var(--fg,CanvasText);font:13px/1.45 -apple-system,"IBM Plex Sans",sans-serif}</style>`,
     `<script>window.data=${jsonForScript(opts.data)};${BRIDGE}</script>`,
     "</head><body>",
     opts.html ?? "",

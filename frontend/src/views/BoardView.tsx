@@ -15,7 +15,7 @@ import {
 } from "../api";
 import { FormFields, MODE_LABEL } from "../components/Assistant";
 import { Icon, Pill, SrLabel } from "../components/ui";
-import { buildSrcdoc, themeVars } from "../lib/frame";
+import { buildSrcdoc, themeMessage, themeScheme, themeVars, watchTheme } from "../lib/frame";
 import { Markdown } from "../lib/markdown";
 import { clock, when } from "../format";
 
@@ -789,9 +789,22 @@ function CustomFrame({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const srcDoc = useMemo(
     () =>
-      buildSrcdoc({ html: b.html, js: b.js, data: b.data, theme: themeVars() }),
+      buildSrcdoc({ html: b.html, js: b.js, data: b.data, theme: themeVars(), scheme: themeScheme() }),
     [b.html, b.js],
   );
+
+  // The colours above are a snapshot. Post the current theme whenever the frame loads and whenever
+  // the app's theme changes, so a frame built in light mode doesn't keep light text in dark mode.
+  useEffect(() => {
+    const send = () => ref.current?.contentWindow?.postMessage(themeMessage(), "*");
+    const frame = ref.current;
+    frame?.addEventListener("load", send);
+    const stop = watchTheme(send);
+    return () => {
+      frame?.removeEventListener("load", send);
+      stop();
+    };
+  }, []);
 
   useEffect(() => {
     const onMsg = (e: MessageEvent) => {
