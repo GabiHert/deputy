@@ -1,5 +1,67 @@
 export namespace app {
 	
+	export class UsageDTO {
+	    model: string;
+	    input: number;
+	    cacheRead: number;
+	    cacheWrite: number;
+	    output: number;
+	    tokens: number;
+	    costUsd: number;
+	    turns: number;
+	    durationMs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new UsageDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.model = source["model"];
+	        this.input = source["input"];
+	        this.cacheRead = source["cacheRead"];
+	        this.cacheWrite = source["cacheWrite"];
+	        this.output = source["output"];
+	        this.tokens = source["tokens"];
+	        this.costUsd = source["costUsd"];
+	        this.turns = source["turns"];
+	        this.durationMs = source["durationMs"];
+	    }
+	}
+	export class UsageTotalDTO {
+	    runs: number;
+	    measured: number;
+	    usage: UsageDTO;
+	
+	    static createFrom(source: any = {}) {
+	        return new UsageTotalDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.runs = source["runs"];
+	        this.measured = source["measured"];
+	        this.usage = this.convertValues(source["usage"], UsageDTO);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class RepoStatsDTO {
 	    exists: boolean;
 	    files: number;
@@ -48,6 +110,7 @@ export namespace app {
 	    model: string;
 	    language: string;
 	    stats: RepoStatsDTO;
+	    week: UsageTotalDTO;
 	
 	    static createFrom(source: any = {}) {
 	        return new AgentDTO(source);
@@ -82,6 +145,7 @@ export namespace app {
 	        this.model = source["model"];
 	        this.language = source["language"];
 	        this.stats = this.convertValues(source["stats"], RepoStatsDTO);
+	        this.week = this.convertValues(source["week"], UsageTotalDTO);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1047,6 +1111,7 @@ export namespace app {
 	    sentAt: number;
 	    answeredAt: number;
 	    dismissedAt: number;
+	    usage?: UsageDTO;
 	
 	    static createFrom(source: any = {}) {
 	        return new RunDTO(source);
@@ -1074,6 +1139,7 @@ export namespace app {
 	        this.sentAt = source["sentAt"];
 	        this.answeredAt = source["answeredAt"];
 	        this.dismissedAt = source["dismissedAt"];
+	        this.usage = this.convertValues(source["usage"], UsageDTO);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -1421,6 +1487,8 @@ export namespace app {
 		    return a;
 		}
 	}
+	
+	
 
 }
 

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/GabiHert/positron/internal/domain"
 )
 
 // AgentRun is one headless Claude Code run of an agent.
@@ -32,6 +34,9 @@ type AgentResult struct {
 	Images []string `json:"images"` // repo-relative image paths to send
 	Voice  bool     `json:"voice"`  // send the reply as a voice note
 	Note   string   `json:"note"`   // one line for Activity: why quiet, or what it learned
+	// Usage is what the run used, from claude's report; it is set on a failed run too when
+	// claude reported it.
+	Usage *domain.Usage `json:"-"`
 }
 
 const resultSchema = `{"type":"object","properties":{` +
@@ -153,17 +158,19 @@ func (rn Runner) Run(ctx context.Context, r AgentRun) (AgentResult, error) {
 		}
 		return AgentResult{}, errors.New(msg)
 	}
+	usage := parseUsage(stdout.Bytes())
 	if out.IsError {
-		return AgentResult{}, fmt.Errorf("Claude Code stopped with an error (%s): %s", out.Subtype, lastLines(out.Result, 6))
+		return AgentResult{Usage: usage}, fmt.Errorf("Claude Code stopped with an error (%s): %s", out.Subtype, lastLines(out.Result, 6))
 	}
-	var res AgentResult
+	res := AgentResult{}
 	raw := out.StructuredOutput
 	if len(raw) == 0 || string(raw) == "null" {
 		raw = json.RawMessage(out.Result)
 	}
 	if err := json.Unmarshal(raw, &res); err != nil {
-		return AgentResult{}, fmt.Errorf("the agent's answer was not in the expected form: %s", lastLines(out.Result, 4))
+		return AgentResult{Usage: usage}, fmt.Errorf("the agent's answer was not in the expected form: %s", lastLines(out.Result, 4))
 	}
+	res.Usage = usage
 	res.Reply = strings.TrimSpace(res.Reply)
 	if res.Reply == "NO_REPLY" {
 		res.Reply = ""

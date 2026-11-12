@@ -175,4 +175,7 @@ type Run struct {
 	SentAt time.Time `json:"sentAt"`
 	// DismissedAt is when the owner cleared this run from "needs you" lists on the board.
 	DismissedAt time.Time `json:"dismissedAt"`
+	// Usage is what the Claude Code run used; nil for runs from before Positron recorded it, or
+	// when claude stopped without reporting it.
+	Usage *Usage `json:"usage,omitempty"`
 }

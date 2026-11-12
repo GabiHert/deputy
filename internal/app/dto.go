@@ -84,6 +84,28 @@ type AgentDTO struct {
 	Model           string       `json:"model"`    // "" | "sonnet" | "opus" | "haiku"
 	Language        string       `json:"language"` // "pt-BR" | "en": voice notes and spoken replies
 	Stats           RepoStatsDTO `json:"stats"`
+	// Week is what the agent's runs used in the last 7 days. It is read-only.
+	Week UsageTotalDTO `json:"week"`
+}
+
+// UsageDTO is what one run used. CostUSD is at API list prices; a subscription is not billed per run.
+type UsageDTO struct {
+	Model      string  `json:"model"`
+	Input      int64   `json:"input"`
+	CacheRead  int64   `json:"cacheRead"`
+	CacheWrite int64   `json:"cacheWrite"`
+	Output     int64   `json:"output"`
+	Tokens     int64   `json:"tokens"` // all of the above
+	CostUSD    float64 `json:"costUsd"`
+	Turns      int     `json:"turns"`
+	DurationMs int64   `json:"durationMs"`
+}
+
+// UsageTotalDTO adds up the usage of an agent's runs.
+type UsageTotalDTO struct {
+	Runs     int      `json:"runs"`
+	Measured int      `json:"measured"` // runs that carry usage; older runs have none
+	Usage    UsageDTO `json:"usage"`
 }
 
 // MessageDTO is a WhatsApp message shown in an activity card.
@@ -131,6 +153,8 @@ type RunDTO struct {
 	AnsweredAt int64 `json:"answeredAt"`
 	// DismissedAt is when the owner dismissed it from "needs you" lists; 0 if not.
 	DismissedAt int64 `json:"dismissedAt"`
+	// Usage is what the Claude Code run used; nil when it was not recorded.
+	Usage *UsageDTO `json:"usage"`
 }
 
 // StatsDTO is the Today panel in Activity.

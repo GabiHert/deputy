@@ -232,6 +232,9 @@ func (b *Backend) toDTO(a domain.Agent, full bool) app.AgentDTO {
 		SendImages: a.SendImages, VoiceReplies: a.VoiceReplies, Web: a.Web, Bash: a.Bash, Model: a.Model,
 		Language: string(a.Language),
 	}
+	if a.ID != "" {
+		d.Week = b.agentWeek(a.ID)
+	}
 	if full && a.RepoPath != "" {
 		repo := gitrepo.Repo{Dir: a.RepoPath, EnvFn: b.d.Env}
 		d.Instructions = repo.Instructions()
@@ -459,6 +462,10 @@ func (b *Backend) runDTO(r domain.Run, agents map[string]domain.Agent) app.RunDT
 	if !r.DismissedAt.IsZero() {
 		d.DismissedAt = ms(r.DismissedAt)
 	}
+	if r.Usage != nil {
+		u := usageDTO(*r.Usage)
+		d.Usage = &u
+	}
 	if t := b.d.Store.LastFromMe(r.ChatJID, r.At); !t.IsZero() {
 		d.AnsweredAt = ms(t)
 	}
@@ -484,6 +491,17 @@ func (b *Backend) runDTO(r domain.Run, agents map[string]domain.Agent) app.RunDT
 		d.Images = append(d.Images, att)
 	}
 	return d
+}
+
+func usageDTO(u domain.Usage) app.UsageDTO {
+	return app.UsageDTO{Model: u.Model, Input: u.Input, CacheRead: u.CacheRead, CacheWrite: u.CacheWrite, Output: u.Output,
+		Tokens: u.Tokens(), CostUSD: u.CostUSD, Turns: u.Turns, DurationMs: u.DurationMs}
+}
+
+// agentWeek adds up what an agent's runs used in the last 7 days.
+func (b *Backend) agentWeek(agentID string) app.UsageTotalDTO {
+	t := domain.SumUsage(b.d.Store.Runs(store.RunQuery{AgentID: agentID, Since: time.Now().AddDate(0, 0, -7)}))
+	return app.UsageTotalDTO{Runs: t.Runs, Measured: t.Measured, Usage: usageDTO(t.Usage)}
 }
 
 func pathEscape(p string) string {

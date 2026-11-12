@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, errText, on, type Agent, type Message, type Run, type Stats } from "../api";
-import { bytes, clock, duration, when } from "../format";
+import { api, errText, on, type Agent, type Message, type Run, type Stats, type Usage } from "../api";
+import { bytes, clock, duration, tokens, usageLine, usd, when } from "../format";
 import { Icon, Pill, SrLabel } from "../components/ui";
 
 const emptyStats: Stats = { sent: 0, waiting: 0, quiet: 0, learned: 0, failed: 0, photos: 0, voice: 0, imagesSent: 0 };
@@ -143,6 +143,12 @@ function RunCard({ run }: { run: Run }) {
           <strong className="strong">{run.agentName}</strong> stayed quiet in {where}
           {first ? ` · "${first.length > 80 ? first.slice(0, 80) + "…" : first}"` : ""}
           {incoming.length > 1 ? ` (${incoming.length} messages${run.note ? `, ${run.note}` : ""})` : run.note ? ` (${run.note})` : ""}
+          {run.usage && (
+            <span className="muted xsmall run__usage" title={usageTitle(run.usage)}>
+              {" · "}
+              {tokens(run.usage.tokens)} tokens, ≈ {usd(run.usage.costUsd)}
+            </span>
+          )}
         </div>
       </li>
     );
@@ -167,9 +173,26 @@ function RunCard({ run }: { run: Run }) {
           </div>
         )}
         <ReplySection run={run} />
+        {run.usage && (
+          <span className="muted xsmall run__usage" title={usageTitle(run.usage)}>
+            {usageLine(run.usage)}
+          </span>
+        )}
       </div>
     </li>
   );
+}
+
+/** usageTitle is the full breakdown of a run's usage, for a hover. */
+export function usageTitle(u: Usage): string {
+  const lines = [
+    u.model && `Model: ${u.model}`,
+    `Input: ${u.input.toLocaleString()} new, ${u.cacheRead.toLocaleString()} read from cache, ${u.cacheWrite.toLocaleString()} written to cache`,
+    `Output: ${u.output.toLocaleString()}`,
+    `${u.turns} ${u.turns === 1 ? "turn" : "turns"}, ${(u.durationMs / 1000).toFixed(1)} s`,
+    `≈ ${usd(u.costUsd)} at API prices; your subscription is not billed per run.`,
+  ];
+  return lines.filter(Boolean).join("\n");
 }
 
 function IncomingMessage({ m, chatName, isGroup }: { m: Message; chatName: string; isGroup: boolean }) {

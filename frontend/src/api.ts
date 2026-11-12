@@ -87,7 +87,22 @@ export type Agent = {
   model: string;
   language: string;
   stats: RepoStats;
+  week?: UsageTotal;
 };
+
+/** What one Claude Code run used. costUsd is at API list prices; a subscription is not billed per run. */
+export type Usage = {
+  model: string;
+  input: number;
+  cacheRead: number;
+  cacheWrite: number;
+  output: number;
+  tokens: number;
+  costUsd: number;
+  turns: number;
+  durationMs: number;
+};
+export type UsageTotal = { runs: number; measured: number; usage: Usage };
 
 export type Message = {
   id: string;
@@ -124,6 +139,7 @@ export type Run = {
   files: string[] | null;
   error: string;
   sentAt: number;
+  usage?: Usage | null;
 };
 
 export type Stats = {

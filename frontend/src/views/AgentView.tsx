@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api, api2, errText, on, useAssistantChats, type Agent, type Chat, type MCPServer } from "../api";
 import { Conversation } from "../components/Assistant";
 import { Markdown } from "../lib/markdown";
-import { when } from "../format";
+import { tokens, usd, when } from "../format";
 import { Check, Confirm, Icon, Segmented, SrLabel, Switch } from "../components/ui";
 
 export function AgentView({
@@ -370,6 +370,7 @@ export function AgentView({
                 knowledge folder.
               </span>
             )}
+            {agent.week && agent.week.runs > 0 && <WeekUsage week={agent.week} />}
             <Check
               id="a-push"
               checked={agent.push}
@@ -670,5 +671,37 @@ function FolderAccess({
         </span>
       )}
     </fieldset>
+  );
+}
+
+/** WeekUsage shows what the agent's runs used in the last 7 days. */
+function WeekUsage({ week }: { week: NonNullable<Agent["week"]> }) {
+  const u = week.usage;
+  const per = week.measured > 0 ? u.costUsd / week.measured : 0;
+  return (
+    <div className="week-usage">
+      <div className="muted xsmall">Last 7 days</div>
+      <div className="stats3">
+        <div>
+          <div className="stat__num">{week.runs}</div>
+          <div className="muted xsmall">runs</div>
+        </div>
+        <div>
+          <div className="stat__num">{tokens(u.tokens)}</div>
+          <div className="muted xsmall">tokens</div>
+        </div>
+        <div>
+          <div className="stat__num">≈ {usd(u.costUsd)}</div>
+          <div className="muted xsmall">{week.measured > 0 ? `≈ ${usd(per)} a run` : "at API prices"}</div>
+        </div>
+      </div>
+      <span className="muted xsmall">
+        {week.measured < week.runs
+          ? `Usage is recorded for ${week.measured} of ${week.runs} runs; older runs have none. `
+          : ""}
+        Costs are at API list prices. Your Claude subscription is not billed per run, but the numbers show what
+        each run takes from it.
+      </span>
+    </div>
   );
 }

@@ -660,6 +660,14 @@
   border-radius: 8px;
   padding: 12px;
 }
+.week-usage {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+.run__usage {
+  font-variant-numeric: tabular-nums;
+}
 .stat__num {
   font-family: var(--font-display);
   font-size: 20px;

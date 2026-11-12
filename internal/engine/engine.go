@@ -411,7 +411,7 @@ func (e *Engine) Retry(runID string) error {
 	if err != nil {
 		return errors.New("the agent for this run was deleted")
 	}
-	r.Status, r.Error, r.Reply, r.Note, r.Images, r.Commit, r.Files = domain.RunRunning, "", "", "", nil, "", nil
+	r.Status, r.Error, r.Reply, r.Note, r.Images, r.Commit, r.Files, r.Usage = domain.RunRunning, "", "", "", nil, "", nil, nil
 	r.At = time.Now()
 	e.wg.Add(1)
 	go func() {
@@ -554,6 +554,7 @@ func (e *Engine) execute(a domain.Agent, r domain.Run) domain.Run {
 	if typing {
 		e.d.WA.Typing(r.ChatJID, false, false)
 	}
+	r.Usage = res.Usage
 	if err != nil {
 		if e.ctx.Err() != nil {
 			r.Status, r.Error = domain.RunFailed, "Positron quit while this run was going."

@@ -1,4 +1,4 @@
-import { ago, bytes, clock, duration, initials, plural, secondsLeft, when } from "./format";
+import { ago, bytes, clock, duration, initials, plural, secondsLeft, tokens, usageLine, usd, when } from "./format";
 
 describe("format", () => {
   const now = new Date(2026, 10, 4, 15, 0, 0).getTime();
@@ -39,5 +39,25 @@ describe("format", () => {
     expect(initials("Mãe")).toBe("M");
     expect(initials("BHLabs · time")).toBe("BT");
     expect(initials("")).toBe("?");
+  });
+
+  it("shows token counts short", () => {
+    expect(tokens(950)).toBe("950");
+    expect(tokens(1000)).toBe("1k");
+    expect(tokens(33125)).toBe("33k");
+    expect(tokens(4250)).toBe("4.3k");
+    expect(tokens(1_200_000)).toBe("1.2M");
+  });
+
+  it("shows costs in dollars", () => {
+    expect(usd(0)).toBe("$0");
+    expect(usd(0.0046)).toBe("$0.005");
+    expect(usd(0.0512)).toBe("$0.05");
+    expect(usd(3.2)).toBe("$3.20");
+  });
+
+  it("sums a run's usage up in one line", () => {
+    expect(usageLine({ tokens: 33625, cacheRead: 11382, costUsd: 0.0459 })).toBe("34k tokens · 34% from cache · ≈ $0.05");
+    expect(usageLine({ tokens: 0, cacheRead: 0, costUsd: 0 })).toBe("0 tokens · 0% from cache · ≈ $0");
   });
 });

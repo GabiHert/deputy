@@ -2,6 +2,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -84,6 +85,7 @@ type fakeRunner struct {
 	res     claude.AgentResult
 	prompts []string
 	write   string // file to create in the repo, to test commits
+	err     error  // returned with res, to test failed runs
 }
 
 func (f *fakeRunner) Run(_ context.Context, r claude.AgentRun) (claude.AgentResult, error) {
@@ -93,7 +95,7 @@ func (f *fakeRunner) Run(_ context.Context, r claude.AgentRun) (claude.AgentResu
 	if f.write != "" {
 		_ = os.WriteFile(filepath.Join(r.Dir, f.write), []byte("learned\n"), 0o644)
 	}
-	return f.res, nil
+	return f.res, f.err
 }
 
 func setup(t *testing.T, mode domain.ReplyMode, trig domain.Trigger) (*Engine, *store.Store, *fakeWA, *fakeRunner, domain.Agent) {
@@ -212,6 +214,34 @@ func TestQuietAndOwnMessages(t *testing.T) {
 	}
 	if !strings.Contains(rn.prompts[0], "Gabriel (owner): hello") {
 		t.Fatalf("prompt lacks the owner's message:\n%s", rn.prompts[0])
+	}
+}
+
+func TestRunsKeepTheirUsage(t *testing.T) {
+	e, st, _, rn, a := setup(t, domain.ModeAuto, domain.TriggerAll)
+	rn.res = claude.AgentResult{Note: "small talk", Usage: &domain.Usage{Model: "claude-sonnet-5-5", CacheRead: 12900, CacheWrite: 20100, Output: 80, CostUSD: 0.06}}
+	e.HandleIncoming(msg("group1@g.us", "U1", "kkk", true, false))
+	r := waitRun(t, e)
+	if r.Status != domain.RunQuiet || r.Usage == nil || r.Usage.CacheWrite != 20100 {
+		t.Fatalf("status %s usage %+v", r.Status, r.Usage)
+	}
+	saved, err := st.Run(r.ID)
+	if err != nil || saved.Usage == nil || saved.Usage.CostUSD != 0.06 {
+		t.Fatalf("saved usage %+v, %v", saved.Usage, err)
+	}
+
+	// A failed run still counts what claude reported it used.
+	rn.err = errors.New("Claude Code stopped with an error (error_max_turns): too many turns")
+	rn.res = claude.AgentResult{Usage: &domain.Usage{Input: 10, Output: 5, CostUSD: 0.02}}
+	e.HandleIncoming(msg("group1@g.us", "U2", "e aí?", true, false))
+	r = waitRun(t, e)
+	if r.Status != domain.RunFailed || r.Usage == nil || r.Usage.CostUSD != 0.02 {
+		t.Fatalf("status %s usage %+v", r.Status, r.Usage)
+	}
+
+	total := domain.SumUsage(st.Runs(store.RunQuery{AgentID: a.ID}))
+	if total.Runs != 2 || total.Measured != 2 || total.CostUSD != 0.08 || total.Tokens() != 12900+20100+80+15 {
+		t.Fatalf("total %+v", total)
 	}
 }
 

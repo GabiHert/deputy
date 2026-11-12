@@ -71,3 +71,23 @@ export function ago(ms: number, now: number = Date.now()): string {
   if (d < 30) return `${plural(d, "day")} ago`;
   return new Date(ms).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
+
+/** tokens shows a token count short: 950, 4.3k, 33k, 1.2M. */
+export function tokens(n: number): string {
+  if (n < 1000) return String(Math.round(n));
+  if (n < 1e6) return `${(n / 1000).toFixed(n < 1e4 ? 1 : 0).replace(/\.0$/, "")}k`;
+  return `${(n / 1e6).toFixed(1).replace(/\.0$/, "")}M`;
+}
+
+/** usd shows a cost in dollars, with a third decimal for amounts under a cent. */
+export function usd(n: number): string {
+  if (n <= 0) return "$0";
+  if (n < 0.01) return `$${n.toFixed(3)}`;
+  return `$${n.toFixed(2)}`;
+}
+
+/** usageLine is one short line about what a run used. */
+export function usageLine(u: { tokens: number; cacheRead: number; costUsd: number }): string {
+  const cached = u.tokens > 0 ? Math.round((u.cacheRead / u.tokens) * 100) : 0;
+  return `${tokens(u.tokens)} tokens · ${cached}% from cache · ≈ ${usd(u.costUsd)}`;
+}
