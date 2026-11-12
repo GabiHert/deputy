@@ -21,7 +21,13 @@ export function ActivityPage({
   const [tab, setTab] = useState<"board" | "log">("board");
   return (
     <div className="activity2">
-      <div className="activity2__main">
+      <div
+        className="activity2__main"
+        // overflow-x: hidden still lets focus or scrollIntoView move the page sideways; undo that.
+        onScroll={(e) => {
+          if (e.currentTarget.scrollLeft !== 0) e.currentTarget.scrollLeft = 0;
+        }}
+      >
         <header className="activity2__head">
           <h1 className="h1">Activity</h1>
           <div role="tablist" aria-label="Activity view" className="tabs">
